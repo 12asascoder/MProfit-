@@ -22,6 +22,7 @@ const analytics_module_1 = require("./analytics/analytics.module");
 const report_module_1 = require("./report/report.module");
 const market_data_module_1 = require("./market-data/market-data.module");
 const advisor_module_1 = require("./advisor/advisor.module");
+const ai_module_1 = require("./ai/ai.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -45,6 +46,7 @@ exports.AppModule = AppModule = __decorate([
             report_module_1.ReportModule,
             market_data_module_1.MarketDataModule,
             advisor_module_1.AdvisorModule,
+            ai_module_1.AiModule,
         ],
     })
 ], AppModule);

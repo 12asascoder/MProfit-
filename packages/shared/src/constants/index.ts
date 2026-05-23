@@ -2,7 +2,7 @@
 // MProfit Next — Application Constants
 // ════════════════════════════════════════════════════════════════
 
-import { AssetCategory } from './types';
+import { AssetCategory } from '../types';
 
 // ─── Design Tokens ───────────────────────────────────────────────
 

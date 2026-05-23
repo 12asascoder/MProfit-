@@ -13,6 +13,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ReportModule } from './report/report.module';
 import { MarketDataModule } from './market-data/market-data.module';
 import { AdvisorModule } from './advisor/advisor.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AdvisorModule } from './advisor/advisor.module';
     ReportModule,
     MarketDataModule,
     AdvisorModule,
+    AiModule,
   ],
 })
 export class AppModule {}
