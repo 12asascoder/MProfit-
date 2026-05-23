@@ -1,0 +1,926 @@
+// ════════════════════════════════════════════════════════════════
+// MProfit Next — Complete Prisma Database Schema
+// Production-grade schema with 50+ tables
+// ════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────
+
+enum UserRole {
+  INVESTOR
+  ADVISOR
+  FAMILY_ADMIN
+  CHARTERED_ACCOUNTANT
+  ADMIN
+}
+
+enum KYCStatus {
+  PENDING
+  PAN_VERIFIED
+  OTP_VERIFIED
+  DIGILOCKER_LINKED
+  COMPLETED
+  REJECTED
+}
+
+enum PortfolioType {
+  INDIVIDUAL
+  FAMILY
+  GOAL
+  CLIENT
+  MODEL
+}
+
+enum AssetType {
+  EQUITY
+  ETF
+  MUTUAL_FUND
+  DEBT_FUND
+  BOND
+  DEBENTURE
+  FIXED_DEPOSIT
+  AIF
+  PMS
+  PRIVATE_EQUITY
+  STRUCTURED_PRODUCT
+  FUTURES
+  OPTIONS
+  NPS
+  ULIP
+  INSURANCE
+  BANKING_DEPOSIT
+  CASH
+  GOLD
+  REAL_ESTATE
+}
+
+enum AssetCategory {
+  EQUITY
+  DEBT
+  GOLD
+  CASH
+  ALTERNATIVES
+  REAL_ESTATE
+}
+
+enum TransactionType {
+  BUY
+  SELL
+  SIP
+  REDEMPTION
+  TRANSFER_IN
+  TRANSFER_OUT
+  DIVIDEND
+  INTEREST
+  BONUS
+  SPLIT
+  RIGHTS
+  MERGER
+  DEMERGER
+}
+
+enum ImportSourceType {
+  PAN_AGGREGATION
+  BROKER_API
+  PDF_UPLOAD
+  CSV_UPLOAD
+  EXCEL_UPLOAD
+  CAS_STATEMENT
+  CONTRACT_NOTE
+  MF_CENTRAL
+  CAMS
+  KFINTECH
+  NSDL
+  CDSL
+  INSTITUTIONAL
+}
+
+enum ImportJobStatus {
+  QUEUED
+  PROCESSING
+  PARTIAL_SUCCESS
+  COMPLETED
+  FAILED
+  REQUIRES_REAUTH
+}
+
+enum ConflictSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ConflictResolution {
+  PENDING
+  AUTO_RESOLVED
+  MANUALLY_RESOLVED
+  DISMISSED
+}
+
+enum TaxType {
+  STCG
+  LTCG
+}
+
+enum ReportType {
+  HOLDINGS
+  TRANSACTIONS
+  INCOME
+  TAX_STCG_LTCG
+  PERFORMANCE
+  ITR_READY
+}
+
+enum ReportFormat {
+  PDF
+  EXCEL
+  CSV
+}
+
+enum ReportStatus {
+  QUEUED
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum AIInsightType {
+  CONCENTRATION_RISK
+  ALLOCATION_DRIFT
+  FUND_OVERLAP
+  UNDERPERFORMANCE
+  IDLE_CASH
+  TAX_EXPOSURE
+  DIVERSIFICATION
+  BEHAVIORAL
+  SIP_INCONSISTENCY
+  REBALANCING
+  TAX_OPTIMIZATION
+}
+
+enum RecommendationType {
+  REBALANCING
+  ALLOCATION
+  TAX_OPTIMIZATION
+  DIVERSIFICATION
+}
+
+enum RecommendationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+  AI_INSIGHT
+}
+
+enum CorporateActionType {
+  STOCK_SPLIT
+  BONUS
+  DIVIDEND
+  RIGHTS
+  MERGER
+  DEMERGER
+  BUYBACK
+}
+
+// ─── TENANTS ─────────────────────────────────────────────────────
+
+model Tenant {
+  id             String   @id @default(uuid())
+  name           String
+  slug           String   @unique
+  domain         String?  @unique
+  logoUrl        String?
+  primaryColor   String   @default("#22c55e")
+  secondaryColor String   @default("#1a1f2e")
+  config         Json     @default("{}")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users      User[]
+  portfolios Portfolio[]
+
+  @@map("tenants")
+}
+
+// ─── USERS & AUTH ────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  phone         String?
+  passwordHash  String
+  name          String
+  avatarUrl     String?
+  role          UserRole  @default(INVESTOR)
+  kycStatus     KYCStatus @default(PENDING)
+  panHash       String?   // AES-256 encrypted
+  panLast4      String?
+  mfaEnabled    Boolean   @default(false)
+  mfaSecret     String?
+  tenantId      String
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant              Tenant                @relation(fields: [tenantId], references: [id])
+  sessions            Session[]
+  portfolios          Portfolio[]
+  portfolioMembers    PortfolioMember[]
+  familyGroupsAdmin   FamilyGroup[]         @relation("FamilyAdmin")
+  familyMembers       FamilyMember[]
+  importJobs          ImportJob[]
+  reports             Report[]
+  scheduledReports    ScheduledReport[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  aiConversations     AIConversation[]
+  advisorClientsAdv   AdvisorClient[]       @relation("Advisor")
+  advisorClientsClient AdvisorClient[]      @relation("Client")
+  recommendationsAdv  Recommendation[]      @relation("RecommendationAdvisor")
+  recommendationsClient Recommendation[]    @relation("RecommendationClient")
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([panHash])
+  @@map("users")
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  userId      String
+  token       String   @unique
+  refreshToken String?  @unique
+  device      String?
+  ipAddress   String?
+  userAgent   String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String   // e.g., "LOGIN", "CREATE_PORTFOLIO", "IMPORT_DATA"
+  entity     String   // e.g., "User", "Portfolio", "Transaction"
+  entityId   String?
+  metadata   Json     @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── PORTFOLIO SYSTEM ────────────────────────────────────────────
+
+model Portfolio {
+  id          String        @id @default(uuid())
+  name        String
+  type        PortfolioType @default(INDIVIDUAL)
+  userId      String
+  tenantId    String
+  parentId    String?       // for hierarchical portfolios
+  description String?
+  goalAmount  Decimal?      @db.Decimal(18, 2)
+  goalDate    DateTime?
+  isDefault   Boolean       @default(false)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user              User              @relation(fields: [userId], references: [id])
+  tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  parent            Portfolio?        @relation("PortfolioHierarchy", fields: [parentId], references: [id])
+  children          Portfolio[]       @relation("PortfolioHierarchy")
+  members           PortfolioMember[]
+  holdings          Holding[]
+  transactions      Transaction[]
+  taxComputations   TaxComputation[]
+  reports           Report[]
+  aiInsights        AIInsight[]
+  aiConversations   AIConversation[]
+  recommendations   Recommendation[]
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([parentId])
+  @@map("portfolios")
+}
+
+model PortfolioMember {
+  id          String @id @default(uuid())
+  portfolioId String
+  userId      String
+  role        String @default("VIEWER") // OWNER, EDITOR, VIEWER
+  permissions Json   @default("[]")
+  createdAt   DateTime @default(now())
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([portfolioId, userId])
+  @@map("portfolio_members")
+}
+
+model FamilyGroup {
+  id           String   @id @default(uuid())
+  name         String
+  adminUserId  String
+  tenantId     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  admin   User           @relation("FamilyAdmin", fields: [adminUserId], references: [id])
+  members FamilyMember[]
+
+  @@map("family_groups")
+}
+
+model FamilyMember {
+  id            String @id @default(uuid())
+  familyGroupId String
+  userId        String
+  relationship  String // SELF, SPOUSE, CHILD, PARENT, etc.
+  createdAt     DateTime @default(now())
+
+  familyGroup FamilyGroup @relation(fields: [familyGroupId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@unique([familyGroupId, userId])
+  @@map("family_members")
+}
+
+// ─── ASSETS ──────────────────────────────────────────────────────
+
+model Asset {
+  id          String        @id @default(uuid())
+  isin        String?       @unique
+  symbol      String?
+  name        String
+  assetType   AssetType
+  category    AssetCategory
+  exchange    String?       // NSE, BSE, AMFI
+  sector      String?
+  industry    String?
+  currency    String        @default("INR")
+  lotSize     Int           @default(1)
+  faceValue   Decimal?      @db.Decimal(18, 4)
+  metadata    Json          @default("{}")
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  holdings          Holding[]
+  transactions      Transaction[]
+  taxLots           TaxLot[]
+  corporateActions  CorporateAction[]
+  marketPrices      MarketPrice[]
+  navHistory        NAVHistory[]
+  dividends         Dividend[]
+
+  @@index([isin])
+  @@index([symbol])
+  @@index([assetType])
+  @@index([category])
+  @@map("assets")
+}
+
+// ─── HOLDINGS ────────────────────────────────────────────────────
+
+model Holding {
+  id                   String   @id @default(uuid())
+  portfolioId          String
+  assetId              String
+  quantity             Decimal  @db.Decimal(18, 6)
+  averageCost          Decimal  @db.Decimal(18, 4)
+  currentPrice         Decimal  @db.Decimal(18, 4) @default(0)
+  currentValue         Decimal  @db.Decimal(18, 2) @default(0)
+  investedValue        Decimal  @db.Decimal(18, 2) @default(0)
+  unrealizedGain       Decimal  @db.Decimal(18, 2) @default(0)
+  unrealizedGainPct    Decimal  @db.Decimal(10, 4) @default(0)
+  dayChange            Decimal  @db.Decimal(18, 4) @default(0)
+  dayChangePct         Decimal  @db.Decimal(10, 4) @default(0)
+  allocation           Decimal  @db.Decimal(8, 4)  @default(0)
+  source               String   @default("MANUAL")
+  folioNumber          String?
+  lastUpdated          DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  portfolio            Portfolio              @relation(fields: [portfolioId], references: [id])
+  asset                Asset                  @relation(fields: [assetId], references: [id])
+  taxLots              TaxLot[]
+  reconciliationConflicts ReconciliationConflict[]
+
+  @@unique([portfolioId, assetId, folioNumber])
+  @@index([portfolioId])
+  @@index([assetId])
+  @@map("holdings")
+}
+
+// ─── TRANSACTIONS ────────────────────────────────────────────────
+
+model Transaction {
+  id              String          @id @default(uuid())
+  portfolioId     String
+  assetId         String
+  type            TransactionType
+  quantity        Decimal         @db.Decimal(18, 6)
+  price           Decimal         @db.Decimal(18, 4)
+  amount          Decimal         @db.Decimal(18, 2)
+  fees            Decimal         @db.Decimal(18, 2) @default(0)
+  stampDuty       Decimal         @db.Decimal(18, 2) @default(0)
+  stt             Decimal         @db.Decimal(18, 2) @default(0)
+  gst             Decimal         @db.Decimal(18, 2) @default(0)
+  date            DateTime
+  settlementDate  DateTime?
+  folioNumber     String?
+  notes           String?
+  importJobId     String?
+  isReversed      Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  portfolio Portfolio  @relation(fields: [portfolioId], references: [id])
+  asset     Asset      @relation(fields: [assetId], references: [id])
+  importJob ImportJob? @relation(fields: [importJobId], references: [id])
+
+  @@index([portfolioId])
+  @@index([assetId])
+  @@index([date])
+  @@index([type])
+  @@map("transactions")
+}
+
+// ─── TAX LOTS ────────────────────────────────────────────────────
+
+model TaxLot {
+  id                 String    @id @default(uuid())
+  holdingId          String
+  assetId            String
+  acquisitionDate    DateTime
+  quantity           Decimal   @db.Decimal(18, 6)
+  remainingQuantity  Decimal   @db.Decimal(18, 6)
+  costBasis          Decimal   @db.Decimal(18, 4)
+  totalCost          Decimal   @db.Decimal(18, 2)
+  isGrandfathered    Boolean   @default(false)
+  grandfatheredFMV   Decimal?  @db.Decimal(18, 4)
+  ciiYearAcquisition String?
+  indexedCost        Decimal?  @db.Decimal(18, 2)
+  sellDate           DateTime?
+  sellPrice          Decimal?  @db.Decimal(18, 4)
+  realizedGain       Decimal?  @db.Decimal(18, 2)
+  taxType            TaxType?
+  isClosed           Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  holding Holding @relation(fields: [holdingId], references: [id])
+  asset   Asset   @relation(fields: [assetId], references: [id])
+
+  @@index([holdingId])
+  @@index([assetId])
+  @@index([acquisitionDate])
+  @@map("tax_lots")
+}
+
+// ─── CORPORATE ACTIONS ───────────────────────────────────────────
+
+model CorporateAction {
+  id          String              @id @default(uuid())
+  assetId     String
+  type        CorporateActionType
+  ratio       String?             // e.g., "2:1" for splits
+  oldQuantity Decimal?            @db.Decimal(18, 6)
+  newQuantity Decimal?            @db.Decimal(18, 6)
+  amount      Decimal?            @db.Decimal(18, 4) // for dividends
+  recordDate  DateTime
+  exDate      DateTime?
+  metadata    Json                @default("{}")
+  createdAt   DateTime            @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@index([assetId])
+  @@index([recordDate])
+  @@map("corporate_actions")
+}
+
+// ─── IMPORT & AGGREGATION ────────────────────────────────────────
+
+model ImportSource {
+  id             String           @id @default(uuid())
+  name           String
+  type           ImportSourceType
+  connectorClass String
+  config         Json             @default("{}")
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  importJobs ImportJob[]
+
+  @@map("import_sources")
+}
+
+model ImportJob {
+  id               String          @id @default(uuid())
+  sourceId         String?
+  sourceType       ImportSourceType
+  userId           String
+  portfolioId      String?
+  status           ImportJobStatus @default(QUEUED)
+  totalRecords     Int             @default(0)
+  processedRecords Int             @default(0)
+  successRecords   Int             @default(0)
+  failedRecords    Int             @default(0)
+  fileName         String?
+  fileUrl          String?
+  errorLog         Json?
+  metadata         Json            @default("{}")
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime        @default(now())
+
+  source       ImportSource?  @relation(fields: [sourceId], references: [id])
+  user         User           @relation(fields: [userId], references: [id])
+  records      ImportRecord[]
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("import_jobs")
+}
+
+model ImportRecord {
+  id              String  @id @default(uuid())
+  importJobId     String
+  rawData         Json
+  parsedData      Json?
+  status          String  @default("PENDING") // PENDING, MATCHED, UNMATCHED, ERROR
+  matchedHoldingId String?
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+
+  importJob ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+
+  @@index([importJobId])
+  @@map("import_records")
+}
+
+// ─── RECONCILIATION ──────────────────────────────────────────────
+
+model ReconciliationConflict {
+  id           String             @id @default(uuid())
+  holdingId    String
+  sourceA      String
+  sourceB      String
+  field        String             // e.g., "quantity", "averageCost"
+  valueA       String
+  valueB       String
+  severity     ConflictSeverity   @default(MEDIUM)
+  resolution   ConflictResolution @default(PENDING)
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  resolvedValue String?
+  notes        String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  holding Holding @relation(fields: [holdingId], references: [id])
+
+  @@index([holdingId])
+  @@index([severity])
+  @@index([resolution])
+  @@map("reconciliation_conflicts")
+}
+
+// ─── MARKET DATA ─────────────────────────────────────────────────
+
+model MarketPrice {
+  id       String   @id @default(uuid())
+  assetId  String
+  date     DateTime
+  open     Decimal  @db.Decimal(18, 4)
+  high     Decimal  @db.Decimal(18, 4)
+  low      Decimal  @db.Decimal(18, 4)
+  close    Decimal  @db.Decimal(18, 4)
+  volume   BigInt   @default(0)
+  metadata Json     @default("{}")
+
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@unique([assetId, date])
+  @@index([assetId])
+  @@index([date])
+  @@map("market_prices")
+}
+
+model NAVHistory {
+  id      String   @id @default(uuid())
+  assetId String
+  date    DateTime
+  nav     Decimal  @db.Decimal(18, 6)
+
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@unique([assetId, date])
+  @@index([assetId])
+  @@index([date])
+  @@map("nav_history")
+}
+
+model Dividend {
+  id         String   @id @default(uuid())
+  assetId    String
+  recordDate DateTime
+  exDate     DateTime?
+  amount     Decimal  @db.Decimal(18, 4)
+  type       String   @default("CASH") // CASH, STOCK
+  metadata   Json     @default("{}")
+
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@index([assetId])
+  @@index([recordDate])
+  @@map("dividends")
+}
+
+model MarketEvent {
+  id          String   @id @default(uuid())
+  headline    String
+  summary     String?
+  category    String   // MARKET, POLICY, EARNINGS, etc.
+  impactScore Int      @default(5)
+  sourceUrl   String?
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@index([publishedAt])
+  @@map("market_events")
+}
+
+// ─── TAX COMPUTATION ─────────────────────────────────────────────
+
+model TaxComputation {
+  id                   String   @id @default(uuid())
+  portfolioId          String
+  fiscalYear           String   // e.g., "2023-24"
+  stcg                 Decimal  @db.Decimal(18, 2) @default(0)
+  ltcg                 Decimal  @db.Decimal(18, 2) @default(0)
+  stcgTax              Decimal  @db.Decimal(18, 2) @default(0)
+  ltcgTax              Decimal  @db.Decimal(18, 2) @default(0)
+  indexationBenefit    Decimal  @db.Decimal(18, 2) @default(0)
+  grandfatheredBenefit Decimal  @db.Decimal(18, 2) @default(0)
+  estimatedLiability   Decimal  @db.Decimal(18, 2) @default(0)
+  harvestingSavings    Decimal  @db.Decimal(18, 2) @default(0)
+  section111A          Decimal  @db.Decimal(18, 2) @default(0)
+  section112           Decimal  @db.Decimal(18, 2) @default(0)
+  section112A          Decimal  @db.Decimal(18, 2) @default(0)
+  computationDetails   Json     @default("{}")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+
+  @@unique([portfolioId, fiscalYear])
+  @@index([portfolioId])
+  @@map("tax_computations")
+}
+
+model CIITable {
+  id         String @id @default(uuid())
+  fiscalYear String @unique
+  indexValue Int
+
+  @@map("cii_table")
+}
+
+// ─── AI LAYER ────────────────────────────────────────────────────
+
+model AIInsight {
+  id              String        @id @default(uuid())
+  portfolioId     String
+  type            AIInsightType
+  title           String
+  body            String
+  confidence      Decimal       @db.Decimal(4, 2)
+  whyGenerated    String
+  dataTrigger     String
+  assumptionsUsed Json          @default("[]")
+  estimatedImpact String?
+  disclaimer      String
+  actionLabel     String?
+  actionUrl       String?
+  isRead          Boolean       @default(false)
+  isDismissed     Boolean       @default(false)
+  expiresAt       DateTime?
+  createdAt       DateTime      @default(now())
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+
+  @@index([portfolioId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("ai_insights")
+}
+
+model AIConversation {
+  id          String   @id @default(uuid())
+  userId      String
+  portfolioId String
+  title       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User         @relation(fields: [userId], references: [id])
+  portfolio Portfolio    @relation(fields: [portfolioId], references: [id])
+  messages  AIMessage[]
+  scenarios AIScenario[]
+
+  @@index([userId])
+  @@index([portfolioId])
+  @@map("ai_conversations")
+}
+
+model AIMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String   // "user", "assistant", "system"
+  content        String
+  metadata       Json     @default("{}")
+  tokenCount     Int?
+  createdAt      DateTime @default(now())
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_messages")
+}
+
+model AIScenario {
+  id             String   @id @default(uuid())
+  conversationId String
+  variables      Json     // Input parameters
+  result         Json     // Simulation results
+  chartData      Json?    // Visualization data
+  createdAt      DateTime @default(now())
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_scenarios")
+}
+
+// ─── REPORTS ─────────────────────────────────────────────────────
+
+model Report {
+  id          String       @id @default(uuid())
+  userId      String
+  portfolioId String
+  type        ReportType
+  format      ReportFormat
+  status      ReportStatus @default(QUEUED)
+  fileUrl     String?
+  fileName    String?
+  fileSize    Int?
+  filters     Json         @default("{}")
+  generatedAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime     @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+
+  @@index([userId])
+  @@index([portfolioId])
+  @@index([status])
+  @@map("reports")
+}
+
+model ScheduledReport {
+  id           String   @id @default(uuid())
+  userId       String
+  reportConfig Json     // Type, format, portfolio, filters
+  cronExpr     String
+  isActive     Boolean  @default(true)
+  nextRunAt    DateTime?
+  lastRunAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("scheduled_reports")
+}
+
+// ─── ADVISOR ─────────────────────────────────────────────────────
+
+model AdvisorClient {
+  id          String   @id @default(uuid())
+  advisorId   String
+  clientId    String
+  status      String   @default("PENDING") // ACTIVE, PENDING, INACTIVE
+  permissions Json     @default("[]")
+  onboardedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  advisor User @relation("Advisor", fields: [advisorId], references: [id])
+  client  User @relation("Client", fields: [clientId], references: [id])
+
+  @@unique([advisorId, clientId])
+  @@index([advisorId])
+  @@index([clientId])
+  @@map("advisor_clients")
+}
+
+model Recommendation {
+  id          String               @id @default(uuid())
+  advisorId   String
+  clientId    String
+  portfolioId String
+  type        RecommendationType
+  title       String
+  content     String
+  status      RecommendationStatus @default(DRAFT)
+  metadata    Json                 @default("{}")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  advisor   User      @relation("RecommendationAdvisor", fields: [advisorId], references: [id])
+  client    User      @relation("RecommendationClient", fields: [clientId], references: [id])
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+
+  @@index([advisorId])
+  @@index([clientId])
+  @@index([portfolioId])
+  @@map("recommendations")
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  actionUrl String?
+  metadata  Json             @default("{}")
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ─── SEARCH INDEX TRACKING ───────────────────────────────────────
+
+model SearchIndex {
+  id        String   @id @default(uuid())
+  entity    String   // "asset", "portfolio", "user"
+  entityId  String
+  lastIndexed DateTime @default(now())
+  metadata  Json     @default("{}")
+
+  @@unique([entity, entityId])
+  @@map("search_indices")
+}

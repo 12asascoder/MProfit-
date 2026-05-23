@@ -1,0 +1,38 @@
+import { ImportService } from './import.service';
+import { ImportSourceType } from '@prisma/client';
+export declare class ImportController {
+    private readonly importService;
+    constructor(importService: ImportService);
+    importCAS(req: any, file: Express.Multer.File, password?: string): Promise<{
+        jobId: string;
+        status: import(".prisma/client").$Enums.ImportJobStatus;
+        message: string;
+    }>;
+    syncBroker(req: any, body: {
+        brokerType: ImportSourceType;
+        credentials: any;
+    }): Promise<{
+        jobId: string;
+        status: import(".prisma/client").$Enums.ImportJobStatus;
+        message: string;
+    }>;
+    getJobStatus(id: string, req: any): Promise<{
+        id: string;
+        createdAt: Date;
+        userId: string;
+        portfolioId: string | null;
+        metadata: import("@prisma/client/runtime/library").JsonValue;
+        sourceType: import(".prisma/client").$Enums.ImportSourceType;
+        status: import(".prisma/client").$Enums.ImportJobStatus;
+        totalRecords: number;
+        processedRecords: number;
+        successRecords: number;
+        failedRecords: number;
+        fileName: string | null;
+        fileUrl: string | null;
+        errorLog: import("@prisma/client/runtime/library").JsonValue | null;
+        startedAt: Date | null;
+        completedAt: Date | null;
+        sourceId: string | null;
+    }>;
+}
