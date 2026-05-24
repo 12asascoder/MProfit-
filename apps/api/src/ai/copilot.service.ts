@@ -52,7 +52,7 @@ export class CopilotService {
       try {
         // Fetch context
         const portfolio = await this.prisma.portfolio.findUnique({
-          where: { id: portfolioId },
+          where: { id: conversation.portfolioId },
           include: { holdings: { include: { asset: true } } }
         });
 

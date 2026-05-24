@@ -20,11 +20,11 @@ let AnalyticsController = class AnalyticsController {
         this.analyticsService = analyticsService;
     }
     getAssetAllocation(req, portfolioId) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.analyticsService.getAssetAllocation(userId, portfolioId);
     }
     getPerformanceMetrics(req, portfolioId) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.analyticsService.getPerformanceMetrics(userId, portfolioId);
     }
 };

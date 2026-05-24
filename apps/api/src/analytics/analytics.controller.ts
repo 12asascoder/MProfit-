@@ -7,13 +7,13 @@ export class AnalyticsController {
 
   @Get('allocation')
   getAssetAllocation(@Req() req: any, @Query('portfolioId') portfolioId?: string) {
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.analyticsService.getAssetAllocation(userId, portfolioId);
   }
 
   @Get('performance')
   getPerformanceMetrics(@Req() req: any, @Query('portfolioId') portfolioId?: string) {
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.analyticsService.getPerformanceMetrics(userId, portfolioId);
   }
 }

@@ -4,6 +4,7 @@ import React from 'react';
 import { validatePAN } from '@mprofit/shared';
 import { ApiClient } from '@/lib/api-client';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 import {
   Shield,
   ArrowRight,

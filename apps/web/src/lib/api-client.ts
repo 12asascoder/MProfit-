@@ -45,8 +45,9 @@ export class ApiClient {
   static async getProfile() { return this.request('/auth/profile'); }
 
   // Portfolio
-  static async getPortfolios() { return this.request('/portfolio'); }
-  static async getPortfolioSummary(id: string) { return this.request(`/portfolio/${id}/summary`); }
+  static async getPortfolios() { return this.request('/portfolios'); }
+  static async getPortfolioById(id: string) { return this.request(`/portfolios/${id}`); }
+  static async getPortfolioSummary(id: string) { return this.request(`/portfolios/${id}/summary`); }
   
   // Analytics
   static async getXIRR(portfolioId: string) { return this.request(`/analytics/xirr?portfolioId=${portfolioId}`); }

@@ -5,8 +5,6 @@ import { cn } from '@/lib/utils';
 import { formatCompactINR, formatCurrency, formatPercent } from '@mprofit/shared';
 import {
   mockDashboardSummary,
-  mockAssetAllocation,
-  mockHoldings,
   mockMarketUpdates,
 } from '@/lib/mock-data';
 import { ApiClient } from '@/lib/api-client';
@@ -32,6 +30,8 @@ import { HoldingsTable } from '@/components/dashboard/holdings-table';
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [summary, setSummary] = React.useState<any>(null);
+  const [allocations, setAllocations] = React.useState<any[]>([]);
+  const [holdings, setHoldings] = React.useState<any[]>([]);
   const [insights, setInsights] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState('');
@@ -47,7 +47,7 @@ export default function DashboardPage() {
         const portfolios = await ApiClient.getPortfolios() as any[];
         if (portfolios && portfolios.length > 0) {
           // Fetch summary for the primary portfolio
-          const data = await ApiClient.getPortfolioSummary(portfolios[0].id);
+          const data: any = await ApiClient.getPortfolioSummary(portfolios[0].id);
           
           // Fetch real AI insights
           try {
@@ -55,6 +55,51 @@ export default function DashboardPage() {
             setInsights(fetchedInsights);
           } catch (insightErr) {
             console.error('Failed to fetch insights', insightErr);
+          }
+
+          // Fetch real asset allocation
+          try {
+            const fetchedAllocations: any = await ApiClient.getAssetAllocation(portfolios[0].id);
+            // Format to what UI expects: { category: string, value: number, percentage: number, color: string }
+            // The backend returns { category, value, percentage }
+            const colorMap: Record<string, string> = {
+              'EQUITY': '#10b981',
+              'MUTUAL_FUND': '#3b82f6',
+              'FIXED_INCOME': '#f59e0b',
+              'REAL_ESTATE': '#8b5cf6',
+              'CASH': '#64748b',
+            };
+            const mappedAllocations = fetchedAllocations.map((a: any) => ({
+              ...a,
+              color: colorMap[a.category] || '#94a3b8'
+            }));
+            setAllocations(mappedAllocations);
+          } catch (allocErr) {
+            console.error('Failed to fetch allocations', allocErr);
+          }
+
+          // Fetch raw portfolio for holdings
+          try {
+            const rawPortfolio: any = await ApiClient.getPortfolioById(portfolios[0].id);
+            if (rawPortfolio.holdings) {
+              // Map backend holdings to UI format
+              const mappedHoldings = rawPortfolio.holdings.map((h: any) => ({
+                id: h.id,
+                assetName: h.asset.name,
+                ticker: h.asset.ticker,
+                quantity: h.quantity,
+                avgCost: h.averageCost,
+                currentPrice: h.asset.currentPrice,
+                currentValue: h.quantity * h.asset.currentPrice,
+                dayChange: h.asset.currentPrice * 0.02, // Mock 2% daily change for demo
+                dayChangePercent: 2.0,
+                totalReturn: (h.asset.currentPrice - h.averageCost) * h.quantity,
+                totalReturnPercent: ((h.asset.currentPrice - h.averageCost) / h.averageCost) * 100,
+              }));
+              setHoldings(mappedHoldings);
+            }
+          } catch (holdErr) {
+            console.error('Failed to fetch portfolio holdings', holdErr);
           }
 
           // Map backend response to the shape the UI expects
@@ -100,7 +145,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Asset Allocation (2 cols) */}
         <div className="lg:col-span-2">
-          <AssetAllocationSection allocations={mockAssetAllocation} />
+          {allocations.length > 0 ? (
+            <AssetAllocationSection allocations={allocations} />
+          ) : (
+            <div className="p-6 bg-surface border border-border rounded-xl flex items-center justify-center h-full min-h-[300px]">
+              <p className="text-text-secondary text-sm">No allocation data found</p>
+            </div>
+          )}
         </div>
 
         {/* AI Insights & Market Updates (1 col) */}
@@ -117,7 +168,13 @@ export default function DashboardPage() {
       </div>
 
       {/* ─── Top Holdings ──────────────────────────────────────── */}
-      <HoldingsTable holdings={mockHoldings} />
+      {holdings.length > 0 ? (
+        <HoldingsTable holdings={holdings} />
+      ) : (
+        <div className="p-6 bg-surface border border-border rounded-xl">
+          <p className="text-text-secondary text-sm">No holdings found in portfolio.</p>
+        </div>
+      )}
 
       {/* ─── Floating Action Button ────────────────────────────── */}
       <button
