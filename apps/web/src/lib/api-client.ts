@@ -1,5 +1,5 @@
 // API Client for Next.js app to communicate with NestJS Backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000') + '/api/v1';
 
 export class ApiClient {
   private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -35,13 +35,18 @@ export class ApiClient {
   }
 
   // Auth
-  static async login(data: any) { return this.request('/auth/login', { method: 'POST', body: JSON.stringify(data) }); }
-  static async verifyOtp(data: any) { return this.request('/auth/verify-otp', { method: 'POST', body: JSON.stringify(data) }); }
+  // Auth
+  static async verifyPan(data: { pan: string; tenantSlug: string }) { 
+    return this.request('/auth/pan/verify', { method: 'POST', body: JSON.stringify(data) }); 
+  }
+  static async verifyOtp(data: { referenceId: string; otp: string }) { 
+    return this.request('/auth/otp/verify', { method: 'POST', body: JSON.stringify(data) }); 
+  }
   static async getProfile() { return this.request('/auth/profile'); }
 
   // Portfolio
-  static async getPortfolios() { return this.request('/portfolios'); }
-  static async getPortfolioSummary(id: string) { return this.request(`/portfolios/${id}/summary`); }
+  static async getPortfolios() { return this.request('/portfolio'); }
+  static async getPortfolioSummary(id: string) { return this.request(`/portfolio/${id}/summary`); }
   
   // Analytics
   static async getXIRR(portfolioId: string) { return this.request(`/analytics/xirr?portfolioId=${portfolioId}`); }

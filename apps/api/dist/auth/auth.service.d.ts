@@ -10,6 +10,11 @@ export declare class AuthService {
     private readonly logger;
     private otpStore;
     constructor(prisma: PrismaService, jwtService: JwtService, tenantService: TenantService);
+    verifyDigiLocker(code: string, state: string): Promise<{
+        success: boolean;
+        kycStatus: "DIGILOCKER_LINKED";
+        message: string;
+    }>;
     initiatePanVerification(dto: PanVerificationDto): Promise<{
         referenceId: string;
         message: string;
@@ -18,6 +23,8 @@ export declare class AuthService {
     }>;
     verifyOtp(dto: VerifyOtpDto): Promise<{
         accessToken: string;
+        refreshToken: string;
+        expiresIn: number;
         user: {
             id: string;
             name: string;

@@ -23,15 +23,15 @@ let ReportController = class ReportController {
         if (!body.type || !body.format) {
             throw new common_1.BadRequestException('type and format are required');
         }
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.reportService.generateReport(userId, body.type, body.format, body.filters || {});
     }
     listReports(req) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.reportService.listUserReports(userId);
     }
     getReportStatus(id, req) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.reportService.getReportStatus(id, userId);
     }
 };

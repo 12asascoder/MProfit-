@@ -12,6 +12,8 @@ export declare class AuthController {
     }>;
     verifyOtp(dto: VerifyOtpDto): Promise<{
         accessToken: string;
+        refreshToken: string;
+        expiresIn: number;
         user: {
             id: string;
             name: string;

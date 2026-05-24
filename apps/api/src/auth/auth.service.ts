@@ -22,6 +22,20 @@ export class AuthService {
   ) {}
 
   /**
+   * DigiLocker OAuth integration stub
+   */
+  async verifyDigiLocker(code: string, state: string) {
+    this.logger.log(`Received DigiLocker callback with code: ${code}`);
+    // In a real scenario, exchange code for access token via DigiLocker API
+    // Retrieve XML/JSON payload, verify digital signature, and match PAN
+    return {
+      success: true,
+      kycStatus: KYCStatus.DIGILOCKER_LINKED,
+      message: 'DigiLocker verification simulated successfully',
+    };
+  }
+
+  /**
    * Initiate PAN verification - simulating an external KYC check and sending an OTP
    */
   async initiatePanVerification(dto: PanVerificationDto) {
@@ -125,8 +139,23 @@ export class AuthService {
 
     const payload = { sub: user.id, role: user.role, tenantId: user.tenantId };
     
+    // 15-minute idle timeout tracking via token expiration
+    const accessToken = await this.jwtService.signAsync(payload, { expiresIn: '15m' });
+    const refreshToken = uuidv4(); // Mock refresh token
+    
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        token: accessToken,
+        refreshToken: refreshToken,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 mins
+      }
+    });
+
     return {
-      accessToken: await this.jwtService.signAsync(payload),
+      accessToken,
+      refreshToken,
+      expiresIn: 900,
       user: {
         id: user.id,
         name: user.name,

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -14,6 +15,7 @@ import { ReportModule } from './report/report.module';
 import { MarketDataModule } from './market-data/market-data.module';
 import { AdvisorModule } from './advisor/advisor.module';
 import { AiModule } from './ai/ai.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -35,6 +37,12 @@ import { AiModule } from './ai/ai.module';
     MarketDataModule,
     AdvisorModule,
     AiModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}

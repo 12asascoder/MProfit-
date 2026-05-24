@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssetCategory, AssetType } from '@prisma/client';
 
 @Injectable()
 export class AssetService {
+  private readonly logger = new Logger(AssetService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async findAll(query: { category?: AssetCategory; search?: string }) {
@@ -36,12 +38,26 @@ export class AssetService {
   }
 
   async findByIsin(isin: string) {
-    const asset = await this.prisma.asset.findUnique({
+    let asset = await this.prisma.asset.findUnique({
       where: { isin },
     });
     
     if (!asset) {
-      throw new NotFoundException(`Asset with ISIN ${isin} not found`);
+      this.logger.log(`Asset with ISIN ${isin} not found locally. Mocking external API resolution...`);
+      // Mock external data resolution
+      const isEquity = isin.startsWith('INE');
+      
+      asset = await this.prisma.asset.create({
+        data: {
+          isin,
+          name: `Resolved Asset ${isin}`,
+          symbol: `SYM${isin.substring(3, 7)}`,
+          assetType: isEquity ? AssetType.EQUITY : AssetType.MUTUAL_FUND,
+          category: isEquity ? AssetCategory.EQUITY : AssetCategory.DEBT,
+          exchange: isEquity ? 'NSE' : undefined,
+          metadata: { resolvedSource: 'MockExternalAPI' }
+        }
+      });
     }
     
     return asset;

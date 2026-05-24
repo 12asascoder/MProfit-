@@ -28,13 +28,21 @@ let ImportController = class ImportController {
         const tenantId = req.user?.tenantId || 'mock-tenant-id';
         return this.importService.startCASImport(userId, tenantId, file.buffer, password);
     }
+    async syncPanLinkedAccounts(req, pan) {
+        if (!pan) {
+            throw new common_1.BadRequestException('PAN is required for aggregation sync');
+        }
+        const userId = req.user.userId;
+        const tenantId = req.user.tenantId;
+        return this.importService.syncPanLinkedAccounts(userId, tenantId, pan);
+    }
     async syncBroker(req, body) {
-        const userId = req.user?.id || 'mock-user-id';
-        const tenantId = req.user?.tenantId || 'mock-tenant-id';
+        const userId = req.user.userId;
+        const tenantId = req.user.tenantId;
         return this.importService.startBrokerSync(userId, tenantId, body.brokerType, body.credentials);
     }
     getJobStatus(id, req) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.importService.getJobStatus(id, userId);
     }
 };
@@ -49,6 +57,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", Promise)
 ], ImportController.prototype, "importCAS", null);
+__decorate([
+    (0, common_1.Post)('pan/sync'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)('pan')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], ImportController.prototype, "syncPanLinkedAccounts", null);
 __decorate([
     (0, common_1.Post)('broker/sync'),
     __param(0, (0, common_1.Req)()),

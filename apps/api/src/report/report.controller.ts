@@ -12,19 +12,19 @@ export class ReportController {
       throw new BadRequestException('type and format are required');
     }
 
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.reportService.generateReport(userId, body.type, body.format, body.filters || {});
   }
 
   @Get()
   listReports(@Req() req: any) {
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.reportService.listUserReports(userId);
   }
 
   @Get(':id')
   getReportStatus(@Param('id') id: string, @Req() req: any) {
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.reportService.getReportStatus(id, userId);
   }
 }

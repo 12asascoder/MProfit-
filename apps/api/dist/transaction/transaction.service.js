@@ -8,14 +8,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var TransactionService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TransactionService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
-let TransactionService = class TransactionService {
+let TransactionService = TransactionService_1 = class TransactionService {
     constructor(prisma) {
         this.prisma = prisma;
+        this.logger = new common_1.Logger(TransactionService_1.name);
     }
     async create(userId, tenantId, dto) {
         const portfolio = await this.prisma.portfolio.findFirst({
@@ -40,6 +42,7 @@ let TransactionService = class TransactionService {
                     ...dto,
                 }
             });
+            this.logger.log(`Created ${dto.type} transaction for asset ${dto.assetId} in portfolio ${dto.portfolioId}`);
             let holding = await tx.holding.findUnique({
                 where: {
                     portfolioId_assetId_folioNumber: {
@@ -129,7 +132,7 @@ let TransactionService = class TransactionService {
     }
 };
 exports.TransactionService = TransactionService;
-exports.TransactionService = TransactionService = __decorate([
+exports.TransactionService = TransactionService = TransactionService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], TransactionService);

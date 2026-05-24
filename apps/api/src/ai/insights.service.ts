@@ -1,19 +1,100 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AIInsightType } from '@prisma/client';
+import OpenAI from 'openai';
 
 @Injectable()
 export class InsightsService {
   private readonly logger = new Logger(InsightsService.name);
+  private openai: OpenAI | null = null;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (apiKey) {
+      this.openai = new OpenAI({ apiKey });
+    } else {
+      this.logger.warn('OPENAI_API_KEY not found. InsightsService will run in mock mode.');
+    }
+  }
 
   async generateInsightsForPortfolio(portfolioId: string) {
-    // In production, this would query portfolio data and send it to an LLM
-    // or run deterministic algorithms to find drift, concentration, etc.
-    
-    // Mocking insight generation
-    const insights = [
+    // 1. Fetch live portfolio context
+    const portfolio = await this.prisma.portfolio.findUnique({
+      where: { id: portfolioId },
+      include: { holdings: { include: { asset: true } } }
+    });
+
+    if (!portfolio) throw new Error('Portfolio not found');
+
+    let generatedInsights = [];
+
+    // 2. Query LLM if API Key exists
+    if (this.openai) {
+      try {
+        const systemPrompt = `
+You are MProfit AI, a wealth intelligence system. Analyze the following portfolio holdings and generate actionable insights (e.g., concentration risk, tax harvesting).
+Return a JSON array of insights matching this schema:
+[
+  {
+    "type": "CONCENTRATION_RISK" | "TAX_OPTIMIZATION" | "MARKET_OPPORTUNITY",
+    "title": "string",
+    "body": "string",
+    "confidence": number (0 to 1),
+    "whyGenerated": "string",
+    "dataTrigger": "stringified json object",
+    "disclaimer": "string",
+    "actionLabel": "string"
+  }
+]
+
+Portfolio Data:
+${JSON.stringify(portfolio.holdings.map(h => ({ name: h.asset.name, qty: h.quantity, cost: h.averageCost, category: h.asset.category })), null, 2)}
+`;
+
+        const completion = await this.openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'system', content: systemPrompt }],
+          response_format: { type: 'json_object' }
+        });
+
+        const rawContent = completion.choices[0].message.content;
+        const parsed = JSON.parse(rawContent || '{"insights":[]}');
+        // Handle cases where the LLM wraps it in an object like { "insights": [...] } or just an array
+        generatedInsights = Array.isArray(parsed) ? parsed : (parsed.insights || []);
+
+      } catch (error: any) {
+        this.logger.error(`Failed to generate LLM insights: ${error.message}`);
+        generatedInsights = this.getMockInsights(portfolioId);
+      }
+    } else {
+      // 3. Fallback mock insights
+      generatedInsights = this.getMockInsights(portfolioId);
+    }
+
+    // 4. Save to database
+    const createdInsights = await Promise.all(
+      generatedInsights.map((insight: any) => 
+        this.prisma.aIInsight.create({
+          data: {
+            portfolioId,
+            type: insight.type || AIInsightType.CONCENTRATION_RISK,
+            title: insight.title,
+            body: insight.body,
+            confidence: insight.confidence,
+            whyGenerated: insight.whyGenerated,
+            dataTrigger: typeof insight.dataTrigger === 'string' ? insight.dataTrigger : JSON.stringify(insight.dataTrigger),
+            disclaimer: insight.disclaimer || 'This is an AI-generated insight.',
+            actionLabel: insight.actionLabel,
+          }
+        })
+      )
+    );
+
+    return createdInsights;
+  }
+
+  private getMockInsights(portfolioId: string) {
+    return [
       {
         portfolioId,
         type: AIInsightType.CONCENTRATION_RISK,
@@ -37,16 +118,6 @@ export class InsightsService {
         actionLabel: 'View Tax Lots',
       }
     ];
-
-    const createdInsights = await Promise.all(
-      insights.map(insight => 
-        this.prisma.aIInsight.create({
-          data: insight
-        })
-      )
-    );
-
-    return createdInsights;
   }
 
   async getActiveInsights(portfolioId: string) {

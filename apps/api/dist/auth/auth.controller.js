@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const auth_service_1 = require("./auth.service");
 const pan_verification_dto_1 = require("./dto/pan-verification.dto");
 const verify_otp_dto_1 = require("./dto/verify-otp.dto");
+const public_decorator_1 = require("./decorators/public.decorator");
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
@@ -30,6 +31,7 @@ let AuthController = class AuthController {
 };
 exports.AuthController = AuthController;
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Post)('pan/verify'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
@@ -38,6 +40,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "initiatePanVerification", null);
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Post)('otp/verify'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),

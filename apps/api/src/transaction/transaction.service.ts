@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionType } from '@prisma/client';
 
 @Injectable()
 export class TransactionService {
+  private readonly logger = new Logger(TransactionService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, tenantId: string, dto: CreateTransactionDto) {
@@ -38,6 +40,8 @@ export class TransactionService {
           ...dto,
         }
       });
+
+      this.logger.log(`Created ${dto.type} transaction for asset ${dto.assetId} in portfolio ${dto.portfolioId}`);
 
       // Find existing holding
       let holding = await tx.holding.findUnique({

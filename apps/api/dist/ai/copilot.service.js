@@ -13,10 +13,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CopilotService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const openai_1 = require("openai");
 let CopilotService = CopilotService_1 = class CopilotService {
     constructor(prisma) {
         this.prisma = prisma;
         this.logger = new common_1.Logger(CopilotService_1.name);
+        this.openai = null;
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (apiKey) {
+            this.openai = new openai_1.default({ apiKey });
+        }
+        else {
+            this.logger.warn('OPENAI_API_KEY not found. Copilot will run in mock mode.');
+        }
     }
     async startConversation(userId, portfolioId) {
         return this.prisma.aIConversation.create({
@@ -41,7 +50,41 @@ let CopilotService = CopilotService_1 = class CopilotService {
                 content,
             }
         });
-        const responseContent = "Based on your portfolio's current asset allocation, your equity exposure is slightly above your target of 70%. I recommend reviewing your recent SIPs or considering rebalancing your large-cap holdings.";
+        let responseContent = "I'm currently running in offline mock mode. Please configure OPENAI_API_KEY in the backend to access live intelligence.";
+        if (this.openai) {
+            try {
+                const portfolio = await this.prisma.portfolio.findUnique({
+                    where: { id: portfolioId },
+                    include: { holdings: { include: { asset: true } } }
+                });
+                const history = await this.prisma.aIMessage.findMany({
+                    where: { conversationId },
+                    orderBy: { createdAt: 'asc' },
+                    take: 10
+                });
+                const messages = [
+                    { role: 'system', content: `You are MProfit AI Copilot, a professional wealth management advisor. The user has a portfolio with the following holdings: \n\n${JSON.stringify(portfolio?.holdings.map(h => ({ name: h.asset.name, quantity: h.quantity, averageCost: h.averageCost })), null, 2)}\n\nProvide concise, professional, and actionable advice.` },
+                    ...history.map(m => ({ role: m.role, content: m.content }))
+                ];
+                const completion = await this.openai.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages,
+                });
+                responseContent = completion.choices[0].message.content || responseContent;
+            }
+            catch (error) {
+                this.logger.error(`OpenAI error: ${error.message}`);
+                responseContent = "I'm sorry, I encountered an error connecting to the AI brain.";
+            }
+        }
+        else {
+            if (content.toLowerCase().includes('allocate') || content.toLowerCase().includes('equity')) {
+                responseContent = "Based on your portfolio's current asset allocation, your equity exposure is slightly above your target of 70%. I recommend reviewing your recent SIPs or considering rebalancing your large-cap holdings.";
+            }
+            else {
+                responseContent = "This is a mocked AI response. In production, this would provide deep context-aware insights regarding your MProfit portfolio.";
+            }
+        }
         const aiMessage = await this.prisma.aIMessage.create({
             data: {
                 conversationId,

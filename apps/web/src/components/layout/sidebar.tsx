@@ -50,7 +50,7 @@ export function Sidebar({ collapsed = false, onRefresh }: SidebarProps) {
       )}
     >
       {/* ─── Logo ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-white/5">
+      <div className="flex items-center gap-2 px-6 py-5 border-b border-white/5 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-brand-green flex items-center justify-center">
             <span className="text-white font-bold text-sm">M</span>
@@ -91,7 +91,7 @@ export function Sidebar({ collapsed = false, onRefresh }: SidebarProps) {
       </nav>
 
       {/* ─── Refresh Button ───────────────────────────────────── */}
-      <div className="px-3 pb-3">
+      <div className="px-3 pb-3 shrink-0">
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
@@ -108,7 +108,7 @@ export function Sidebar({ collapsed = false, onRefresh }: SidebarProps) {
       </div>
 
       {/* ─── Bottom Links ─────────────────────────────────────── */}
-      <div className="px-3 pb-4 space-y-1 border-t border-white/5 pt-3">
+      <div className="px-3 pb-4 space-y-1 border-t border-white/5 pt-3 shrink-0">
         <button className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-text hover:text-sidebar-text-active hover:bg-sidebar-hover transition-colors w-full">
           <HelpCircle className="w-5 h-5" />
           {!collapsed && <span>Support</span>}

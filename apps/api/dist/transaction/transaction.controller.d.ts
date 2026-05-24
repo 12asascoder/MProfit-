@@ -5,33 +5,32 @@ export declare class TransactionController {
     constructor(transactionService: TransactionService);
     create(req: any, createTransactionDto: CreateTransactionDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         type: import(".prisma/client").$Enums.TransactionType;
-        portfolioId: string;
-        assetId: string;
         quantity: import("@prisma/client/runtime/library").Decimal;
-        folioNumber: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         amount: import("@prisma/client/runtime/library").Decimal;
-        date: Date;
         fees: import("@prisma/client/runtime/library").Decimal;
         stampDuty: import("@prisma/client/runtime/library").Decimal;
         stt: import("@prisma/client/runtime/library").Decimal;
         gst: import("@prisma/client/runtime/library").Decimal;
-        notes: string | null;
+        date: Date;
         settlementDate: Date | null;
+        folioNumber: string | null;
+        notes: string | null;
         isReversed: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        portfolioId: string;
+        assetId: string;
         importJobId: string | null;
     }>;
     findAllByPortfolio(portfolioId: string, req: any): Promise<({
         asset: {
             symbol: string | null;
-            name: string;
             id: string;
-            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
             isin: string | null;
             assetType: import(".prisma/client").$Enums.AssetType;
             category: import(".prisma/client").$Enums.AssetCategory;
@@ -42,26 +41,27 @@ export declare class TransactionController {
             lotSize: number;
             faceValue: import("@prisma/client/runtime/library").Decimal | null;
             metadata: import("@prisma/client/runtime/library").JsonValue;
+            isActive: boolean;
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         type: import(".prisma/client").$Enums.TransactionType;
-        portfolioId: string;
-        assetId: string;
         quantity: import("@prisma/client/runtime/library").Decimal;
-        folioNumber: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         amount: import("@prisma/client/runtime/library").Decimal;
-        date: Date;
         fees: import("@prisma/client/runtime/library").Decimal;
         stampDuty: import("@prisma/client/runtime/library").Decimal;
         stt: import("@prisma/client/runtime/library").Decimal;
         gst: import("@prisma/client/runtime/library").Decimal;
-        notes: string | null;
+        date: Date;
         settlementDate: Date | null;
+        folioNumber: string | null;
+        notes: string | null;
         isReversed: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        portfolioId: string;
+        assetId: string;
         importJobId: string | null;
     })[]>;
 }

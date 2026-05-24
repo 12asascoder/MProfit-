@@ -26,6 +26,14 @@ let AuthService = AuthService_1 = class AuthService {
         this.logger = new common_1.Logger(AuthService_1.name);
         this.otpStore = new Map();
     }
+    async verifyDigiLocker(code, state) {
+        this.logger.log(`Received DigiLocker callback with code: ${code}`);
+        return {
+            success: true,
+            kycStatus: client_1.KYCStatus.DIGILOCKER_LINKED,
+            message: 'DigiLocker verification simulated successfully',
+        };
+    }
     async initiatePanVerification(dto) {
         const tenant = await this.tenantService.getTenantBySlug(dto.tenantSlug);
         const panHash = await bcrypt.hash(dto.pan, 10);
@@ -98,8 +106,20 @@ let AuthService = AuthService_1 = class AuthService {
             });
         }
         const payload = { sub: user.id, role: user.role, tenantId: user.tenantId };
+        const accessToken = await this.jwtService.signAsync(payload, { expiresIn: '15m' });
+        const refreshToken = (0, uuid_1.v4)();
+        await this.prisma.session.create({
+            data: {
+                userId: user.id,
+                token: accessToken,
+                refreshToken: refreshToken,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+            }
+        });
         return {
-            accessToken: await this.jwtService.signAsync(payload),
+            accessToken,
+            refreshToken,
+            expiresIn: 900,
             user: {
                 id: user.id,
                 name: user.name,

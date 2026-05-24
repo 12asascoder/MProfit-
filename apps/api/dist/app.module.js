@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const core_1 = require("@nestjs/core");
 const config_1 = require("@nestjs/config");
 const prisma_module_1 = require("./prisma/prisma.module");
 const auth_module_1 = require("./auth/auth.module");
@@ -23,6 +24,7 @@ const report_module_1 = require("./report/report.module");
 const market_data_module_1 = require("./market-data/market-data.module");
 const advisor_module_1 = require("./advisor/advisor.module");
 const ai_module_1 = require("./ai/ai.module");
+const jwt_auth_guard_1 = require("./auth/guards/jwt-auth.guard");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -47,6 +49,12 @@ exports.AppModule = AppModule = __decorate([
             market_data_module_1.MarketDataModule,
             advisor_module_1.AdvisorModule,
             ai_module_1.AiModule,
+        ],
+        providers: [
+            {
+                provide: core_1.APP_GUARD,
+                useClass: jwt_auth_guard_1.JwtAuthGuard,
+            },
         ],
     })
 ], AppModule);

@@ -10,14 +10,16 @@ exports.PortfolioModule = void 0;
 const common_1 = require("@nestjs/common");
 const portfolio_service_1 = require("./portfolio.service");
 const portfolio_controller_1 = require("./portfolio.controller");
+const family_controller_1 = require("./family.controller");
+const family_service_1 = require("./family.service");
 let PortfolioModule = class PortfolioModule {
 };
 exports.PortfolioModule = PortfolioModule;
 exports.PortfolioModule = PortfolioModule = __decorate([
     (0, common_1.Module)({
-        controllers: [portfolio_controller_1.PortfolioController],
-        providers: [portfolio_service_1.PortfolioService],
-        exports: [portfolio_service_1.PortfolioService],
+        controllers: [portfolio_controller_1.PortfolioController, family_controller_1.FamilyGroupController],
+        providers: [portfolio_service_1.PortfolioService, family_service_1.FamilyGroupService],
+        exports: [portfolio_service_1.PortfolioService, family_service_1.FamilyGroupService],
     })
 ], PortfolioModule);
 //# sourceMappingURL=portfolio.module.js.map

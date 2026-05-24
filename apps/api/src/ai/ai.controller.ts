@@ -30,19 +30,19 @@ export class AiController {
   // --- Copilot ---
   @Post('copilot/start')
   startConversation(@Req() req: any, @Body('portfolioId') portfolioId: string) {
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.copilotService.startConversation(userId, portfolioId);
   }
 
   @Post('copilot/:id/message')
   sendMessage(@Req() req: any, @Param('id') id: string, @Body('content') content: string) {
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.copilotService.sendMessage(id, content, userId);
   }
 
   @Get('copilot/:id')
   getConversation(@Req() req: any, @Param('id') id: string) {
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.copilotService.getConversationHistory(id, userId);
   }
 
@@ -53,7 +53,7 @@ export class AiController {
     @Param('conversationId') conversationId: string,
     @Body('parameters') parameters: any
   ) {
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.scenarioService.runSimulation(conversationId, parameters, userId);
   }
 }

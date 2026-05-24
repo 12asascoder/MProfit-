@@ -33,19 +33,19 @@ let AiController = class AiController {
         return this.insightsService.generateInsightsForPortfolio(portfolioId);
     }
     startConversation(req, portfolioId) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.copilotService.startConversation(userId, portfolioId);
     }
     sendMessage(req, id, content) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.copilotService.sendMessage(id, content, userId);
     }
     getConversation(req, id) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.copilotService.getConversationHistory(id, userId);
     }
     runScenario(req, conversationId, parameters) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.scenarioService.runSimulation(conversationId, parameters, userId);
     }
 };

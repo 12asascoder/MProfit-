@@ -16,7 +16,7 @@ export class TaxController {
       throw new BadRequestException('startDate and endDate are required');
     }
 
-    const userId = req.user?.id || 'mock-user-id';
+    const userId = req.user.userId;
     return this.taxService.getCapitalGains(userId, startDate, endDate, portfolioId);
   }
 

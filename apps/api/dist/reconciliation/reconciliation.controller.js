@@ -20,15 +20,15 @@ let ReconciliationController = class ReconciliationController {
         this.reconciliationService = reconciliationService;
     }
     getConflicts(req, portfolioId) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.reconciliationService.getConflicts(userId, portfolioId);
     }
     resolveConflict(id, req, body) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.reconciliationService.resolveConflict(id, userId, body.resolvedValue, body.notes);
     }
     dismissConflict(id, req) {
-        const userId = req.user?.id || 'mock-user-id';
+        const userId = req.user.userId;
         return this.reconciliationService.dismissConflict(id, userId);
     }
 };

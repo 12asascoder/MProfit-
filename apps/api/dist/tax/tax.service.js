@@ -40,25 +40,74 @@ let TaxService = TaxService_1 = class TaxService {
         });
         let totalSTCG = 0;
         let totalLTCG = 0;
-        const records = sellTransactions.map(tx => {
-            const isLTCG = tx.asset.category === 'EQUITY' ? Math.random() > 0.5 : Math.random() > 0.3;
-            const gain = (Number(tx.amount) - (Number(tx.price) * 0.8 * Number(tx.quantity)));
-            if (isLTCG) {
-                totalLTCG += gain;
+        const records = [];
+        for (const tx of sellTransactions) {
+            const taxLots = await this.prisma.taxLot.findMany({
+                where: {
+                    holdingId: tx.portfolioId + '_' + tx.assetId,
+                    remainingQuantity: { gt: 0 },
+                },
+                orderBy: { acquisitionDate: 'asc' },
+            });
+            if (!taxLots || taxLots.length === 0) {
+                const isLTCG = tx.asset.category === 'EQUITY';
+                const gain = (Number(tx.amount) - (Number(tx.price) * 0.8 * Number(tx.quantity)));
+                if (isLTCG)
+                    totalLTCG += gain;
+                else
+                    totalSTCG += gain;
+                records.push({
+                    transactionId: tx.id,
+                    assetName: tx.asset.name,
+                    date: tx.date,
+                    quantitySold: tx.quantity,
+                    saleValue: Number(tx.amount),
+                    gain,
+                    type: isLTCG ? 'LTCG' : 'STCG',
+                    method: 'FALLBACK_NO_LOTS'
+                });
+                continue;
             }
-            else {
-                totalSTCG += gain;
+            let remainingToSell = Number(tx.quantity);
+            let saleValueAccumulator = 0;
+            let costBasisAccumulator = 0;
+            let lotLTCG = 0;
+            let lotSTCG = 0;
+            for (const lot of taxLots) {
+                if (remainingToSell <= 0)
+                    break;
+                const qtyFromLot = Math.min(Number(lot.remainingQuantity), remainingToSell);
+                const ratio = qtyFromLot / Number(tx.quantity);
+                const lotSaleValue = Number(tx.amount) * ratio;
+                const lotCostBasis = Number(lot.costBasis) * qtyFromLot;
+                const lotGain = lotSaleValue - lotCostBasis;
+                const holdingPeriodMs = new Date(tx.date).getTime() - new Date(lot.acquisitionDate).getTime();
+                const oneYearMs = 365 * 24 * 60 * 60 * 1000;
+                const isLTCG = holdingPeriodMs > oneYearMs;
+                if (isLTCG) {
+                    lotLTCG += lotGain;
+                    totalLTCG += lotGain;
+                }
+                else {
+                    lotSTCG += lotGain;
+                    totalSTCG += lotGain;
+                }
+                saleValueAccumulator += lotSaleValue;
+                costBasisAccumulator += lotCostBasis;
+                remainingToSell -= qtyFromLot;
             }
-            return {
+            records.push({
                 transactionId: tx.id,
                 assetName: tx.asset.name,
                 date: tx.date,
                 quantitySold: tx.quantity,
-                saleValue: tx.amount,
-                gain,
-                type: isLTCG ? 'LTCG' : 'STCG',
-            };
-        });
+                saleValue: saleValueAccumulator,
+                costBasis: costBasisAccumulator,
+                gain: lotLTCG + lotSTCG,
+                type: lotLTCG > lotSTCG ? 'LTCG' : 'STCG',
+                method: 'FIFO_LOT_MATCHING'
+            });
+        }
         return {
             financialYear: `${financialYearStart} to ${financialYearEnd}`,
             summary: {

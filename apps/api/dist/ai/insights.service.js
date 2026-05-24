@@ -14,13 +14,83 @@ exports.InsightsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
+const openai_1 = require("openai");
 let InsightsService = InsightsService_1 = class InsightsService {
     constructor(prisma) {
         this.prisma = prisma;
         this.logger = new common_1.Logger(InsightsService_1.name);
+        this.openai = null;
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (apiKey) {
+            this.openai = new openai_1.default({ apiKey });
+        }
+        else {
+            this.logger.warn('OPENAI_API_KEY not found. InsightsService will run in mock mode.');
+        }
     }
     async generateInsightsForPortfolio(portfolioId) {
-        const insights = [
+        const portfolio = await this.prisma.portfolio.findUnique({
+            where: { id: portfolioId },
+            include: { holdings: { include: { asset: true } } }
+        });
+        if (!portfolio)
+            throw new Error('Portfolio not found');
+        let generatedInsights = [];
+        if (this.openai) {
+            try {
+                const systemPrompt = `
+You are MProfit AI, a wealth intelligence system. Analyze the following portfolio holdings and generate actionable insights (e.g., concentration risk, tax harvesting).
+Return a JSON array of insights matching this schema:
+[
+  {
+    "type": "CONCENTRATION_RISK" | "TAX_OPTIMIZATION" | "MARKET_OPPORTUNITY",
+    "title": "string",
+    "body": "string",
+    "confidence": number (0 to 1),
+    "whyGenerated": "string",
+    "dataTrigger": "stringified json object",
+    "disclaimer": "string",
+    "actionLabel": "string"
+  }
+]
+
+Portfolio Data:
+${JSON.stringify(portfolio.holdings.map(h => ({ name: h.asset.name, qty: h.quantity, cost: h.averageCost, category: h.asset.category })), null, 2)}
+`;
+                const completion = await this.openai.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: [{ role: 'system', content: systemPrompt }],
+                    response_format: { type: 'json_object' }
+                });
+                const rawContent = completion.choices[0].message.content;
+                const parsed = JSON.parse(rawContent || '{"insights":[]}');
+                generatedInsights = Array.isArray(parsed) ? parsed : (parsed.insights || []);
+            }
+            catch (error) {
+                this.logger.error(`Failed to generate LLM insights: ${error.message}`);
+                generatedInsights = this.getMockInsights(portfolioId);
+            }
+        }
+        else {
+            generatedInsights = this.getMockInsights(portfolioId);
+        }
+        const createdInsights = await Promise.all(generatedInsights.map((insight) => this.prisma.aIInsight.create({
+            data: {
+                portfolioId,
+                type: insight.type || client_1.AIInsightType.CONCENTRATION_RISK,
+                title: insight.title,
+                body: insight.body,
+                confidence: insight.confidence,
+                whyGenerated: insight.whyGenerated,
+                dataTrigger: typeof insight.dataTrigger === 'string' ? insight.dataTrigger : JSON.stringify(insight.dataTrigger),
+                disclaimer: insight.disclaimer || 'This is an AI-generated insight.',
+                actionLabel: insight.actionLabel,
+            }
+        })));
+        return createdInsights;
+    }
+    getMockInsights(portfolioId) {
+        return [
             {
                 portfolioId,
                 type: client_1.AIInsightType.CONCENTRATION_RISK,
@@ -44,10 +114,6 @@ let InsightsService = InsightsService_1 = class InsightsService {
                 actionLabel: 'View Tax Lots',
             }
         ];
-        const createdInsights = await Promise.all(insights.map(insight => this.prisma.aIInsight.create({
-            data: insight
-        })));
-        return createdInsights;
     }
     async getActiveInsights(portfolioId) {
         return this.prisma.aIInsight.findMany({

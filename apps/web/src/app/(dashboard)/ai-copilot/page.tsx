@@ -4,10 +4,11 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { formatCompactINR } from '@mprofit/shared';
 import {
-  mockAIConversationMessages,
   mockScenarioVariables,
 } from '@/lib/mock-data';
 import type { AIMessage, ScenarioVariable } from '@mprofit/shared';
+import { ApiClient } from '@/lib/api-client';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Sparkles,
   Send,
@@ -34,9 +35,12 @@ import {
 } from 'recharts';
 
 export default function AICopilotPage() {
-  const [messages, setMessages] = React.useState<AIMessage[]>(mockAIConversationMessages);
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [messages, setMessages] = React.useState<AIMessage[]>([]);
   const [inputValue, setInputValue] = React.useState('');
   const [variables, setVariables] = React.useState<ScenarioVariable[]>(mockScenarioVariables);
+  const [conversationId, setConversationId] = React.useState<string | null>(null);
+  const [isSending, setIsSending] = React.useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const scenarioChartData = [
@@ -46,27 +50,69 @@ export default function AICopilotPage() {
     { name: 'RECOVERY EST.', value: 6.8, fill: '#22c55e' },
   ];
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
+  // Auto-scroll to bottom
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Load conversation on mount
+  React.useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+
+    const initConversation = async () => {
+      try {
+        const portfolios = await ApiClient.getPortfolios() as any[];
+        if (portfolios && portfolios.length > 0) {
+          const primaryPortfolioId = portfolios[0].id;
+          
+          // Start a new conversation
+          const conv: any = await ApiClient.startCopilot(primaryPortfolioId);
+          setConversationId(conv.id);
+
+          setMessages([{
+            id: 'welcome-1',
+            role: 'assistant',
+            content: 'Hello! I am MProfit AI Copilot. I have loaded your portfolio context. How can I help you optimize your wealth today?',
+            createdAt: new Date().toISOString()
+          }]);
+        }
+      } catch (err) {
+        console.error('Failed to init copilot', err);
+      }
+    };
+
+    initConversation();
+  }, [authLoading, isAuthenticated]);
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || !conversationId || isSending) return;
+    
+    const content = inputValue;
     const newMessage: AIMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: inputValue,
+      content,
       createdAt: new Date().toISOString(),
     };
-    setMessages([...messages, newMessage]);
+    
+    setMessages(prev => [...prev, newMessage]);
     setInputValue('');
+    setIsSending(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: AIMessage = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: 'Analyzing your request... Based on your current portfolio composition and historical data, here are my findings.',
-        createdAt: new Date().toISOString(),
-      };
+    try {
+      const aiResponse: any = await ApiClient.sendCopilotMessage(conversationId, content);
       setMessages(prev => [...prev, aiResponse]);
-    }, 1500);
+    } catch (err) {
+      console.error('Failed to send message', err);
+      setMessages(prev => [...prev, {
+        id: `err-${Date.now()}`,
+        role: 'assistant',
+        content: 'I encountered an error processing your request. Please try again.',
+        createdAt: new Date().toISOString(),
+      }]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleVariableChange = (id: string, value: number) => {
@@ -233,13 +279,15 @@ export default function AICopilotPage() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask Copilot to analyze a specific asset or run a scenario..."
-                className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none"
+                disabled={isSending}
+                placeholder={isSending ? "AI is thinking..." : "Ask Copilot to analyze a specific asset or run a scenario..."}
+                className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none disabled:opacity-50"
               />
             </div>
             <button
               onClick={handleSend}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl text-sm font-bold hover:bg-brand-green-dark transition-colors"
+              disabled={isSending}
+              className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl text-sm font-bold hover:bg-brand-green-dark transition-colors disabled:opacity-50"
             >
               SIMULATE
               <Play className="w-4 h-4 fill-white" />
