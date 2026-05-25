@@ -54,7 +54,7 @@ let CopilotService = CopilotService_1 = class CopilotService {
         if (this.openai) {
             try {
                 const portfolio = await this.prisma.portfolio.findUnique({
-                    where: { id: portfolioId },
+                    where: { id: conversation.portfolioId },
                     include: { holdings: { include: { asset: true } } }
                 });
                 const history = await this.prisma.aIMessage.findMany({

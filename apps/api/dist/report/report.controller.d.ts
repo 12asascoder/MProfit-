@@ -14,32 +14,32 @@ export declare class ReportController {
     }>;
     listReports(req: any): Promise<{
         id: string;
+        createdAt: Date;
         type: import(".prisma/client").$Enums.ReportType;
-        format: import(".prisma/client").$Enums.ReportFormat;
+        userId: string;
+        expiresAt: Date | null;
+        portfolioId: string;
         status: import(".prisma/client").$Enums.ReportStatus;
-        fileUrl: string | null;
         fileName: string | null;
+        fileUrl: string | null;
+        format: import(".prisma/client").$Enums.ReportFormat;
         fileSize: number | null;
         filters: import("@prisma/client/runtime/library").JsonValue;
         generatedAt: Date | null;
-        expiresAt: Date | null;
-        createdAt: Date;
-        userId: string;
-        portfolioId: string;
     }[]>;
     getReportStatus(id: string, req: any): Promise<{
         id: string;
+        createdAt: Date;
         type: import(".prisma/client").$Enums.ReportType;
-        format: import(".prisma/client").$Enums.ReportFormat;
+        userId: string;
+        expiresAt: Date | null;
+        portfolioId: string;
         status: import(".prisma/client").$Enums.ReportStatus;
-        fileUrl: string | null;
         fileName: string | null;
+        fileUrl: string | null;
+        format: import(".prisma/client").$Enums.ReportFormat;
         fileSize: number | null;
         filters: import("@prisma/client/runtime/library").JsonValue;
         generatedAt: Date | null;
-        expiresAt: Date | null;
-        createdAt: Date;
-        userId: string;
-        portfolioId: string;
     }>;
 }

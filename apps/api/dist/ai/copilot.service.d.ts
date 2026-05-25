@@ -6,19 +6,19 @@ export declare class CopilotService {
     constructor(prisma: PrismaService);
     startConversation(userId: string, portfolioId: string): Promise<{
         id: string;
-        title: string | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
         portfolioId: string;
+        title: string | null;
     }>;
     sendMessage(conversationId: string, content: string, userId: string): Promise<{
         id: string;
         createdAt: Date;
         role: string;
-        content: string;
         metadata: import("@prisma/client/runtime/library").JsonValue;
+        content: string;
         tokenCount: number | null;
         conversationId: string;
     }>;
@@ -27,18 +27,18 @@ export declare class CopilotService {
             id: string;
             createdAt: Date;
             role: string;
-            content: string;
             metadata: import("@prisma/client/runtime/library").JsonValue;
+            content: string;
             tokenCount: number | null;
             conversationId: string;
         }[];
     } & {
         id: string;
-        title: string | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
         portfolioId: string;
+        title: string | null;
     }>;
 }

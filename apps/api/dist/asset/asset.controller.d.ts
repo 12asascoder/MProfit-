@@ -5,9 +5,12 @@ export declare class AssetController {
     constructor(assetService: AssetService);
     findAll(category?: AssetCategory, search?: string): Promise<{
         symbol: string | null;
-        id: string;
-        isin: string | null;
         name: string;
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        isin: string | null;
         assetType: import(".prisma/client").$Enums.AssetType;
         category: import(".prisma/client").$Enums.AssetCategory;
         exchange: string | null;
@@ -17,15 +20,15 @@ export declare class AssetController {
         lotSize: number;
         faceValue: import("@prisma/client/runtime/library").Decimal | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
     }[]>;
     findOne(id: string): Promise<{
         symbol: string | null;
-        id: string;
-        isin: string | null;
         name: string;
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        isin: string | null;
         assetType: import(".prisma/client").$Enums.AssetType;
         category: import(".prisma/client").$Enums.AssetCategory;
         exchange: string | null;
@@ -35,15 +38,15 @@ export declare class AssetController {
         lotSize: number;
         faceValue: import("@prisma/client/runtime/library").Decimal | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     findByIsin(isin: string): Promise<{
         symbol: string | null;
-        id: string;
-        isin: string | null;
         name: string;
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        isin: string | null;
         assetType: import(".prisma/client").$Enums.AssetType;
         category: import(".prisma/client").$Enums.AssetCategory;
         exchange: string | null;
@@ -53,8 +56,5 @@ export declare class AssetController {
         lotSize: number;
         faceValue: import("@prisma/client/runtime/library").Decimal | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
 }

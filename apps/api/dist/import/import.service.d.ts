@@ -25,8 +25,11 @@ export declare class ImportService {
     }>;
     getJobStatus(jobId: string, userId: string): Promise<{
         id: string;
-        sourceType: import(".prisma/client").$Enums.ImportSourceType;
+        createdAt: Date;
+        userId: string;
         portfolioId: string | null;
+        metadata: import("@prisma/client/runtime/library").JsonValue;
+        sourceType: import(".prisma/client").$Enums.ImportSourceType;
         status: import(".prisma/client").$Enums.ImportJobStatus;
         totalRecords: number;
         processedRecords: number;
@@ -35,11 +38,8 @@ export declare class ImportService {
         fileName: string | null;
         fileUrl: string | null;
         errorLog: import("@prisma/client/runtime/library").JsonValue | null;
-        metadata: import("@prisma/client/runtime/library").JsonValue;
         startedAt: Date | null;
         completedAt: Date | null;
-        createdAt: Date;
         sourceId: string | null;
-        userId: string;
     }>;
 }

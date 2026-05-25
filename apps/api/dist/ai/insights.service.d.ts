@@ -8,8 +8,10 @@ export declare class InsightsService {
     private getMockInsights;
     getActiveInsights(portfolioId: string): Promise<{
         id: string;
-        portfolioId: string;
+        createdAt: Date;
         type: import(".prisma/client").$Enums.AIInsightType;
+        expiresAt: Date | null;
+        portfolioId: string;
         title: string;
         body: string;
         confidence: import("@prisma/client/runtime/library").Decimal;
@@ -22,13 +24,13 @@ export declare class InsightsService {
         actionUrl: string | null;
         isRead: boolean;
         isDismissed: boolean;
-        expiresAt: Date | null;
-        createdAt: Date;
     }[]>;
     dismissInsight(insightId: string): Promise<{
         id: string;
-        portfolioId: string;
+        createdAt: Date;
         type: import(".prisma/client").$Enums.AIInsightType;
+        expiresAt: Date | null;
+        portfolioId: string;
         title: string;
         body: string;
         confidence: import("@prisma/client/runtime/library").Decimal;
@@ -41,7 +43,5 @@ export declare class InsightsService {
         actionUrl: string | null;
         isRead: boolean;
         isDismissed: boolean;
-        expiresAt: Date | null;
-        createdAt: Date;
     }>;
 }

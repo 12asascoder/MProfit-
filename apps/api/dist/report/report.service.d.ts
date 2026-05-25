@@ -14,6 +14,7 @@ export declare class ReportService {
         createdAt: Date;
         type: import(".prisma/client").$Enums.ReportType;
         userId: string;
+        expiresAt: Date | null;
         portfolioId: string;
         status: import(".prisma/client").$Enums.ReportStatus;
         fileName: string | null;
@@ -22,13 +23,13 @@ export declare class ReportService {
         fileSize: number | null;
         filters: import("@prisma/client/runtime/library").JsonValue;
         generatedAt: Date | null;
-        expiresAt: Date | null;
     }>;
     listUserReports(userId: string): Promise<{
         id: string;
         createdAt: Date;
         type: import(".prisma/client").$Enums.ReportType;
         userId: string;
+        expiresAt: Date | null;
         portfolioId: string;
         status: import(".prisma/client").$Enums.ReportStatus;
         fileName: string | null;
@@ -37,7 +38,6 @@ export declare class ReportService {
         fileSize: number | null;
         filters: import("@prisma/client/runtime/library").JsonValue;
         generatedAt: Date | null;
-        expiresAt: Date | null;
     }[]>;
     private mockAsyncGeneration;
 }

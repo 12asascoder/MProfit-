@@ -8,8 +8,10 @@ export declare class AiController {
     constructor(insightsService: InsightsService, copilotService: CopilotService, scenarioService: ScenarioService);
     getActiveInsights(portfolioId: string): Promise<{
         id: string;
-        portfolioId: string;
+        createdAt: Date;
         type: import(".prisma/client").$Enums.AIInsightType;
+        expiresAt: Date | null;
+        portfolioId: string;
         title: string;
         body: string;
         confidence: import("@prisma/client/runtime/library").Decimal;
@@ -22,13 +24,13 @@ export declare class AiController {
         actionUrl: string | null;
         isRead: boolean;
         isDismissed: boolean;
-        expiresAt: Date | null;
-        createdAt: Date;
     }[]>;
     dismissInsight(id: string): Promise<{
         id: string;
-        portfolioId: string;
+        createdAt: Date;
         type: import(".prisma/client").$Enums.AIInsightType;
+        expiresAt: Date | null;
+        portfolioId: string;
         title: string;
         body: string;
         confidence: import("@prisma/client/runtime/library").Decimal;
@@ -41,25 +43,23 @@ export declare class AiController {
         actionUrl: string | null;
         isRead: boolean;
         isDismissed: boolean;
-        expiresAt: Date | null;
-        createdAt: Date;
     }>;
     generateInsights(portfolioId: string): Promise<any[]>;
     startConversation(req: any, portfolioId: string): Promise<{
         id: string;
-        portfolioId: string;
-        title: string | null;
-        createdAt: Date;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         userId: string;
+        portfolioId: string;
+        title: string | null;
     }>;
     sendMessage(req: any, id: string, content: string): Promise<{
         id: string;
         createdAt: Date;
         role: string;
-        content: string;
         metadata: import("@prisma/client/runtime/library").JsonValue;
+        content: string;
         tokenCount: number | null;
         conversationId: string;
     }>;
@@ -68,19 +68,19 @@ export declare class AiController {
             id: string;
             createdAt: Date;
             role: string;
-            content: string;
             metadata: import("@prisma/client/runtime/library").JsonValue;
+            content: string;
             tokenCount: number | null;
             conversationId: string;
         }[];
     } & {
         id: string;
-        portfolioId: string;
-        title: string | null;
-        createdAt: Date;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         userId: string;
+        portfolioId: string;
+        title: string | null;
     }>;
     runScenario(req: any, conversationId: string, parameters: any): Promise<{
         result: import("@prisma/client/runtime/library").JsonValue;

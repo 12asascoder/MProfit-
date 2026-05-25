@@ -6,11 +6,11 @@ export declare class ReconciliationController {
         holding: {
             asset: {
                 symbol: string | null;
+                name: string;
                 id: string;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
-                isActive: boolean;
                 isin: string | null;
                 assetType: import(".prisma/client").$Enums.AssetType;
                 category: import(".prisma/client").$Enums.AssetCategory;
@@ -44,6 +44,9 @@ export declare class ReconciliationController {
         };
     } & {
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        notes: string | null;
         holdingId: string;
         sourceA: string;
         sourceB: string;
@@ -55,15 +58,15 @@ export declare class ReconciliationController {
         resolvedBy: string | null;
         resolvedAt: Date | null;
         resolvedValue: string | null;
-        notes: string | null;
-        createdAt: Date;
-        updatedAt: Date;
     })[]>;
     resolveConflict(id: string, req: any, body: {
         resolvedValue: string;
         notes?: string;
     }): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        notes: string | null;
         holdingId: string;
         sourceA: string;
         sourceB: string;
@@ -75,12 +78,12 @@ export declare class ReconciliationController {
         resolvedBy: string | null;
         resolvedAt: Date | null;
         resolvedValue: string | null;
-        notes: string | null;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     dismissConflict(id: string, req: any): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        notes: string | null;
         holdingId: string;
         sourceA: string;
         sourceB: string;
@@ -92,8 +95,5 @@ export declare class ReconciliationController {
         resolvedBy: string | null;
         resolvedAt: Date | null;
         resolvedValue: string | null;
-        notes: string | null;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
 }

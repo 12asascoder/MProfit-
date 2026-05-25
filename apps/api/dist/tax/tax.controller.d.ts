@@ -33,11 +33,10 @@ export declare class TaxController {
     }>;
     getTaxLots(holdingId: string): Promise<{
         id: string;
-        assetId: string;
-        quantity: import("@prisma/client/runtime/library").Decimal;
         createdAt: Date;
         updatedAt: Date;
-        holdingId: string;
+        assetId: string;
+        quantity: import("@prisma/client/runtime/library").Decimal;
         acquisitionDate: Date;
         remainingQuantity: import("@prisma/client/runtime/library").Decimal;
         costBasis: import("@prisma/client/runtime/library").Decimal;
@@ -51,5 +50,6 @@ export declare class TaxController {
         realizedGain: import("@prisma/client/runtime/library").Decimal | null;
         taxType: import(".prisma/client").$Enums.TaxType | null;
         isClosed: boolean;
+        holdingId: string;
     }[]>;
 }
