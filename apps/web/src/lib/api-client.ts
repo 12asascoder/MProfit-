@@ -58,4 +58,32 @@ export class ApiClient {
   static async startCopilot(portfolioId: string) { return this.request('/ai/copilot/start', { method: 'POST', body: JSON.stringify({ portfolioId }) }); }
   static async sendCopilotMessage(conversationId: string, content: string) { return this.request(`/ai/copilot/${conversationId}/message`, { method: 'POST', body: JSON.stringify({ content }) }); }
   static async getCopilotHistory(conversationId: string) { return this.request(`/ai/copilot/${conversationId}`); }
+
+  // Import & PAN Aggregation (FR-4)
+  static async startPanAggregation(data: { pan: string; portfolioId: string; importPeriod: string }) {
+    return this.request('/import/pan/aggregate', { method: 'POST', body: JSON.stringify(data) });
+  }
+  static async getAggregationStatus(jobId: string) {
+    return this.request(`/import/pan/aggregate/${jobId}`);
+  }
+  static async getJobStatus(jobId: string) {
+    return this.request(`/import/job/${jobId}`);
+  }
+  static async getConnectors() {
+    return this.request('/import/connectors');
+  }
+
+  // ─── Reconciliation (FR-8) ──────────────────────────────────
+  static async getReconciliationConflicts(portfolioId: string) {
+    return this.request(`/reconciliation/conflicts?portfolioId=${portfolioId}`);
+  }
+  static async runReconciliationEngine(portfolioId: string) {
+    return this.request('/reconciliation/run', { method: 'POST', body: JSON.stringify({ portfolioId }) });
+  }
+  static async resolveReconciliationConflict(conflictId: string, resolvedValue: string, notes?: string) {
+    return this.request(`/reconciliation/conflicts/${conflictId}/resolve`, { method: 'POST', body: JSON.stringify({ resolvedValue, notes }) });
+  }
+  static async dismissReconciliationConflict(conflictId: string) {
+    return this.request(`/reconciliation/conflicts/${conflictId}/dismiss`, { method: 'POST' });
+  }
 }

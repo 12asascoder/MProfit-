@@ -8,6 +8,7 @@ export declare class AnalyticsService {
         value: number;
         percentage: number;
     }[]>;
+    private xirr;
     getPerformanceMetrics(userId: string, portfolioId?: string): Promise<{
         cagr: number;
         xirr: number;

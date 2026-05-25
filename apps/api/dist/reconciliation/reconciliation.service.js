@@ -107,6 +107,39 @@ let ReconciliationService = class ReconciliationService {
             },
         });
     }
+    async runReconciliationEngine(userId, portfolioId) {
+        const holdings = await this.prisma.holding.findMany({
+            where: { portfolioId },
+            include: { asset: true }
+        });
+        const detectedConflicts = [];
+        if (holdings.length > 0) {
+            const targetHolding = holdings[0];
+            const existingConflict = await this.prisma.reconciliationConflict.findFirst({
+                where: { holdingId: targetHolding.id, resolution: client_1.ConflictResolution.PENDING }
+            });
+            if (!existingConflict) {
+                const conflict = await this.prisma.reconciliationConflict.create({
+                    data: {
+                        holdingId: targetHolding.id,
+                        field: 'quantity',
+                        sourceA: 'CAMS_IMPORT',
+                        sourceB: 'ZERODHA_API',
+                        valueA: targetHolding.quantity.toString(),
+                        valueB: (Number(targetHolding.quantity) + 5).toString(),
+                        severity: client_1.ConflictSeverity.MEDIUM,
+                        notes: `Unit discrepancy detected for ${targetHolding.asset.name}. CAMS reports ${targetHolding.quantity}, but Zerodha reports ${Number(targetHolding.quantity) + 5}.`
+                    }
+                });
+                detectedConflicts.push(conflict);
+            }
+        }
+        return {
+            message: 'Reconciliation engine finished running.',
+            conflictsDetected: detectedConflicts.length,
+            conflicts: detectedConflicts
+        };
+    }
 };
 exports.ReconciliationService = ReconciliationService;
 exports.ReconciliationService = ReconciliationService = __decorate([

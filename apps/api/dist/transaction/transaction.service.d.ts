@@ -65,4 +65,5 @@ export declare class TransactionService {
         isReversed: boolean;
         importJobId: string | null;
     })[]>;
+    processCorporateAction(assetId: string, type: 'STOCK_SPLIT' | 'BONUS' | 'DIVIDEND', ratio?: string): Promise<void>;
 }

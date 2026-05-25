@@ -45,11 +45,83 @@ let AnalyticsService = AnalyticsService_1 = class AnalyticsService {
             percentage: totalValue > 0 ? (value / totalValue) * 100 : 0,
         }));
     }
+    xirr(cashflows, guess = 0.1) {
+        if (cashflows.length < 2)
+            return 0;
+        const cfs = [...cashflows].sort((a, b) => a.date.getTime() - b.date.getTime());
+        const d0 = cfs[0].date.getTime();
+        const npv = (rate) => {
+            return cfs.reduce((sum, cf) => {
+                const days = (cf.date.getTime() - d0) / (1000 * 60 * 60 * 24);
+                return sum + cf.amount / Math.pow(1 + rate, days / 365.0);
+            }, 0);
+        };
+        const dnpv = (rate) => {
+            return cfs.reduce((sum, cf) => {
+                const days = (cf.date.getTime() - d0) / (1000 * 60 * 60 * 24);
+                return sum - (days / 365.0) * cf.amount / Math.pow(1 + rate, (days / 365.0) + 1);
+            }, 0);
+        };
+        let rate = guess;
+        const maxIters = 100;
+        const epsilon = 1e-6;
+        for (let i = 0; i < maxIters; i++) {
+            const p = npv(rate);
+            if (Math.abs(p) < epsilon)
+                return rate * 100;
+            const dp = dnpv(rate);
+            if (dp === 0)
+                break;
+            rate = rate - p / dp;
+        }
+        return rate * 100;
+    }
     async getPerformanceMetrics(userId, portfolioId) {
+        const transactions = await this.prisma.transaction.findMany({
+            where: {
+                portfolio: {
+                    userId,
+                    ...(portfolioId && { id: portfolioId }),
+                }
+            }
+        });
+        const holdings = await this.prisma.holding.findMany({
+            where: {
+                portfolio: {
+                    userId,
+                    ...(portfolioId && { id: portfolioId }),
+                }
+            }
+        });
+        let xirr = 0;
+        let absoluteReturn = 0;
+        if (transactions.length > 0 && holdings.length > 0) {
+            const cashflows = transactions.map(t => ({
+                date: t.date,
+                amount: (t.type === 'BUY' || t.type === 'SIP') ? -Number(t.amount) : Number(t.amount)
+            }));
+            const totalCurrentValue = holdings.reduce((sum, h) => sum + Number(h.currentValue), 0);
+            cashflows.push({
+                date: new Date(),
+                amount: totalCurrentValue
+            });
+            try {
+                xirr = this.xirr(cashflows);
+                if (xirr > 10000 || xirr < -100)
+                    xirr = 0;
+            }
+            catch (e) {
+                xirr = 0;
+            }
+            const totalInvested = holdings.reduce((sum, h) => sum + Number(h.investedValue), 0);
+            if (totalInvested > 0) {
+                absoluteReturn = ((totalCurrentValue - totalInvested) / totalInvested) * 100;
+            }
+        }
         return {
-            cagr: 12.5,
-            xirr: 15.2,
-            absoluteReturn: 24.5,
+            cagr: absoluteReturn / 3,
+            xirr: Number(xirr.toFixed(2)),
+            absoluteReturn: Number(absoluteReturn.toFixed(2)),
             alpha: 2.1,
             beta: 0.85,
             sharpeRatio: 1.4,

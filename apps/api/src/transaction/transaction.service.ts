@@ -150,4 +150,51 @@ export class TransactionService {
       }
     });
   }
+
+  // ─── FR-9.2 & FR-9.3 Corporate Actions Tracking ─────────────────
+  async processCorporateAction(assetId: string, type: 'STOCK_SPLIT' | 'BONUS' | 'DIVIDEND', ratio?: string) {
+    // For a stock split (e.g. 2:1), ratio means every 1 share becomes 2 shares.
+    if (type === 'STOCK_SPLIT' && ratio) {
+      const [newShares, oldShares] = ratio.split(':').map(Number);
+      const splitFactor = newShares / oldShares;
+
+      // Find all holdings of this asset
+      const holdings = await this.prisma.holding.findMany({
+        where: { assetId }
+      });
+
+      return this.prisma.$transaction(async (tx) => {
+        // Log the corporate action event
+        await tx.corporateAction.create({
+          data: {
+            assetId,
+            type: 'STOCK_SPLIT',
+            ratio,
+            recordDate: new Date(),
+          }
+        });
+
+        // Recompute quantity and cost basis automatically
+        for (const holding of holdings) {
+          const currentQty = Number(holding.quantity);
+          const currentAvgCost = Number(holding.averageCost);
+          
+          const newQty = currentQty * splitFactor;
+          const newAvgCost = currentAvgCost / splitFactor;
+
+          await tx.holding.update({
+            where: { id: holding.id },
+            data: {
+              quantity: newQty,
+              averageCost: newAvgCost,
+              // Current value remains the same, price splits
+              currentPrice: Number(holding.currentPrice) / splitFactor,
+            }
+          });
+          
+          this.logger.log(`Adjusted holding ${holding.id} for split: Qty ${currentQty}->${newQty}, Cost ${currentAvgCost}->${newAvgCost}`);
+        }
+      });
+    }
+  }
 }

@@ -3,7 +3,9 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import type { AIInsight } from '@mprofit/shared';
-import { Sparkles, Info, Shield } from 'lucide-react';
+import { Sparkles, Info, Shield, ArrowRight } from 'lucide-react';
+import { AnimatedCard } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface AIInsightCardProps {
   insight: AIInsight;
@@ -11,23 +13,35 @@ interface AIInsightCardProps {
 
 export function AIInsightCard({ insight }: AIInsightCardProps) {
   return (
-    <div className="ai-card p-5 animate-slide-in-right">
+    <AnimatedCard 
+      className="p-6 bg-gradient-to-br from-brand-primary via-brand-primary to-[#2a3040] border-none shadow-xl relative overflow-hidden"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+    >
+      {/* Background Glow */}
+      <div className="absolute -top-12 -right-12 w-32 h-32 bg-brand-amber/20 blur-3xl rounded-full pointer-events-none" />
+
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="w-5 h-5 text-brand-amber" />
-        <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+      <div className="flex items-center gap-2 mb-4 relative z-10">
+        <div className="p-1.5 bg-brand-amber/10 rounded-lg">
+          <Sparkles className="w-4 h-4 text-brand-amber" />
+        </div>
+        <h3 className="text-xs font-bold text-white/80 uppercase tracking-widest">
           AI Insight
         </h3>
       </div>
 
       {/* Title */}
-      <h4 className="text-base font-bold text-white mb-2">{insight.title}</h4>
+      <h4 className="text-lg font-bold text-white mb-2 relative z-10 leading-tight">
+        {insight.title}
+      </h4>
 
       {/* Body — render markdown-like bold */}
-      <p className="text-sm text-gray-300 leading-relaxed mb-4">
+      <p className="text-sm text-white/70 leading-relaxed mb-6 relative z-10">
         {insight.body.split('**').map((part, i) =>
           i % 2 === 1 ? (
-            <span key={i} className="font-semibold text-white underline decoration-brand-amber/50 underline-offset-2">
+            <span key={i} className="font-semibold text-white">
               {part}
             </span>
           ) : (
@@ -37,27 +51,23 @@ export function AIInsightCard({ insight }: AIInsightCardProps) {
       </p>
 
       {/* Meta Row */}
-      <div className="flex items-center gap-4 mb-4 text-xs text-gray-400">
-        <div className="flex items-center gap-1">
-          <Info className="w-3.5 h-3.5" />
-          <span>Why?</span>
-        </div>
+      <div className="flex items-center justify-between text-xs text-white/50 mb-5 relative z-10 border-t border-white/10 pt-4">
         <div className="flex items-center gap-1">
           <Shield className="w-3.5 h-3.5 text-brand-green" />
-          <span>Confidence: {Math.round(insight.confidence * 100)}%</span>
+          <span>{Math.round(insight.confidence * 100)}% Confidence</span>
         </div>
       </div>
 
       {/* CTA Button */}
       {insight.actionLabel && (
-        <button className={cn(
-          'w-full py-2.5 px-4 rounded-lg text-sm font-semibold',
-          'bg-white text-sidebar transition-all duration-200',
-          'hover:bg-gray-100 active:scale-[0.98]'
-        )}>
+        <Button 
+          variant="secondary" 
+          className="w-full bg-white text-brand-primary hover:bg-white/90 border-none shadow-md relative z-10 group"
+        >
           {insight.actionLabel}
-        </button>
+          <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+        </Button>
       )}
-    </div>
+    </AnimatedCard>
   );
 }

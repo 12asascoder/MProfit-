@@ -130,6 +130,40 @@ let TransactionService = TransactionService_1 = class TransactionService {
             }
         });
     }
+    async processCorporateAction(assetId, type, ratio) {
+        if (type === 'STOCK_SPLIT' && ratio) {
+            const [newShares, oldShares] = ratio.split(':').map(Number);
+            const splitFactor = newShares / oldShares;
+            const holdings = await this.prisma.holding.findMany({
+                where: { assetId }
+            });
+            return this.prisma.$transaction(async (tx) => {
+                await tx.corporateAction.create({
+                    data: {
+                        assetId,
+                        type: 'STOCK_SPLIT',
+                        ratio,
+                        recordDate: new Date(),
+                    }
+                });
+                for (const holding of holdings) {
+                    const currentQty = Number(holding.quantity);
+                    const currentAvgCost = Number(holding.averageCost);
+                    const newQty = currentQty * splitFactor;
+                    const newAvgCost = currentAvgCost / splitFactor;
+                    await tx.holding.update({
+                        where: { id: holding.id },
+                        data: {
+                            quantity: newQty,
+                            averageCost: newAvgCost,
+                            currentPrice: Number(holding.currentPrice) / splitFactor,
+                        }
+                    });
+                    this.logger.log(`Adjusted holding ${holding.id} for split: Qty ${currentQty}->${newQty}, Cost ${currentAvgCost}->${newAvgCost}`);
+                }
+            });
+        }
+    }
 };
 exports.TransactionService = TransactionService;
 exports.TransactionService = TransactionService = TransactionService_1 = __decorate([

@@ -26,6 +26,8 @@ import { AssetAllocationSection } from '@/components/dashboard/asset-allocation'
 import { AIInsightCard } from '@/components/dashboard/ai-insight-card';
 import { MarketUpdateCard } from '@/components/dashboard/market-update-card';
 import { HoldingsTable } from '@/components/dashboard/holdings-table';
+import { Card } from '@/components/ui/card';
+import { motion } from 'framer-motion';
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -55,6 +57,14 @@ export default function DashboardPage() {
             setInsights(fetchedInsights);
           } catch (insightErr) {
             console.error('Failed to fetch insights', insightErr);
+          }
+
+          // Fetch XIRR Performance Metrics
+          let xirrData = { xirr: 0, cagr: 0 };
+          try {
+            xirrData = (await ApiClient.getXIRR(portfolios[0].id)) as any;
+          } catch (xirrErr) {
+            console.error('Failed to fetch XIRR', xirrErr);
           }
 
           // Fetch real asset allocation
@@ -115,7 +125,7 @@ export default function DashboardPage() {
               value: data.totalGain || 0,
               percentage: data.totalInvested > 0 ? (data.totalGain / data.totalInvested) * 100 : 0
             },
-            xirr: 0 // Mocked for now until XIRR endpoint is integrated
+            xirr: xirrData.xirr || 0 // Integrated FR-11 XIRR
           });
         }
       } catch (err: any) {
@@ -137,7 +147,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-6"
+    >
       {/* ─── KPI Cards Row ─────────────────────────────────────── */}
       <KPICards summary={summary || mockDashboardSummary} />
 
@@ -148,9 +163,9 @@ export default function DashboardPage() {
           {allocations.length > 0 ? (
             <AssetAllocationSection allocations={allocations} />
           ) : (
-            <div className="p-6 bg-surface border border-border rounded-xl flex items-center justify-center h-full min-h-[300px]">
-              <p className="text-text-secondary text-sm">No allocation data found</p>
-            </div>
+            <Card className="flex items-center justify-center h-full min-h-[300px]">
+              <p className="text-text-secondary text-sm font-medium">No allocation data found</p>
+            </Card>
           )}
         </div>
 
@@ -159,9 +174,9 @@ export default function DashboardPage() {
           {insights.length > 0 ? (
             <AIInsightCard insight={insights[0]} />
           ) : (
-            <div className="p-6 bg-surface border border-border rounded-xl text-sm text-text-secondary">
+            <Card className="p-6 text-sm text-text-secondary font-medium">
               No new AI Insights available.
-            </div>
+            </Card>
           )}
           <MarketUpdateCard update={mockMarketUpdates[0]} />
         </div>
@@ -171,9 +186,9 @@ export default function DashboardPage() {
       {holdings.length > 0 ? (
         <HoldingsTable holdings={holdings} />
       ) : (
-        <div className="p-6 bg-surface border border-border rounded-xl">
-          <p className="text-text-secondary text-sm">No holdings found in portfolio.</p>
-        </div>
+        <Card className="p-6">
+          <p className="text-text-secondary text-sm font-medium">No holdings found in portfolio.</p>
+        </Card>
       )}
 
       {/* ─── Floating Action Button ────────────────────────────── */}
@@ -187,6 +202,6 @@ export default function DashboardPage() {
       >
         <Plus className="w-6 h-6" />
       </button>
-    </div>
+    </motion.div>
   );
 }

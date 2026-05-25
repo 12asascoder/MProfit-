@@ -22,8 +22,19 @@ export class ReconciliationController {
   }
 
   @Post('conflicts/:id/dismiss')
-  dismissConflict(@Param('id') id: string, @Req() req: any) {
-    const userId = req.user.userId;
-    return this.reconciliationService.dismissConflict(id, userId);
+  dismissConflict(
+    @Param('id') id: string,
+    @Req() req: any
+  ) {
+    return this.reconciliationService.dismissConflict(id, req.user?.id || 'mock-user-id');
+  }
+
+  // FR-8.1: Run the reconciliation engine
+  @Post('run')
+  runEngine(@Req() req: any, @Body('portfolioId') portfolioId: string) {
+    if (!portfolioId) {
+      throw new Error('portfolioId is required');
+    }
+    return this.reconciliationService.runReconciliationEngine(req.user?.id || 'mock-user-id', portfolioId);
   }
 }

@@ -28,10 +28,19 @@ export class PortfolioService {
 
   async findAll(userId: string, tenantId: string): Promise<Portfolio[]> {
     return this.prisma.portfolio.findMany({
-      where: { userId, tenantId, isActive: true },
+      where: {
+        tenantId,
+        isActive: true,
+        OR: [
+          { userId },
+          { members: { some: { userId } } }
+        ]
+      },
       include: {
         children: true,
-        members: true,
+        members: {
+          include: { user: { select: { name: true, email: true } } }
+        },
       },
       orderBy: [
         { isDefault: 'desc' },

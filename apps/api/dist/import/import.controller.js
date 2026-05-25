@@ -20,43 +20,85 @@ let ImportController = class ImportController {
     constructor(importService) {
         this.importService = importService;
     }
-    async importCAS(req, file, password) {
+    async importDocument(req, file, password) {
         if (!file) {
-            throw new common_1.BadRequestException('CAS PDF file is required');
+            throw new common_1.BadRequestException('File is required');
         }
         const userId = req.user?.id || 'mock-user-id';
         const tenantId = req.user?.tenantId || 'mock-tenant-id';
-        return this.importService.startCASImport(userId, tenantId, file.buffer, password);
+        return this.importService.processDocumentUpload(userId, tenantId, file, password);
+    }
+    getConnectors() {
+        return this.importService.getConnectorRegistry();
+    }
+    async startPanAggregation(req, body) {
+        if (!body.pan || body.pan.length !== 10) {
+            throw new common_1.BadRequestException('Valid 10-character PAN is required');
+        }
+        if (!body.portfolioId) {
+            throw new common_1.BadRequestException('portfolioId is required');
+        }
+        const userId = req.user?.id || 'mock-user-id';
+        const tenantId = req.user?.tenantId || 'mock-tenant-id';
+        return this.importService.startPanAggregation(userId, tenantId, body.pan, body.portfolioId, body.importPeriod || 'all_time');
+    }
+    async getAggregationStatus(jobId, req) {
+        const userId = req.user?.id || 'mock-user-id';
+        return this.importService.getAggregationStatus(jobId, userId);
     }
     async syncPanLinkedAccounts(req, pan) {
         if (!pan) {
             throw new common_1.BadRequestException('PAN is required for aggregation sync');
         }
-        const userId = req.user.userId;
-        const tenantId = req.user.tenantId;
+        const userId = req.user?.id || 'mock-user-id';
+        const tenantId = req.user?.tenantId || 'mock-tenant-id';
         return this.importService.syncPanLinkedAccounts(userId, tenantId, pan);
     }
     async syncBroker(req, body) {
-        const userId = req.user.userId;
-        const tenantId = req.user.tenantId;
+        const userId = req.user?.id || 'mock-user-id';
+        const tenantId = req.user?.tenantId || 'mock-tenant-id';
         return this.importService.startBrokerSync(userId, tenantId, body.brokerType, body.credentials);
     }
     getJobStatus(id, req) {
-        const userId = req.user.userId;
+        const userId = req.user?.id || 'mock-user-id';
         return this.importService.getJobStatus(id, userId);
     }
 };
 exports.ImportController = ImportController;
 __decorate([
-    (0, common_1.Post)('cas'),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, common_1.Post)('document'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
+        limits: { fileSize: 25 * 1024 * 1024 }
+    })),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.UploadedFile)()),
     __param(2, (0, common_1.Body)('password')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", Promise)
-], ImportController.prototype, "importCAS", null);
+], ImportController.prototype, "importDocument", null);
+__decorate([
+    (0, common_1.Get)('connectors'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], ImportController.prototype, "getConnectors", null);
+__decorate([
+    (0, common_1.Post)('pan/aggregate'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], ImportController.prototype, "startPanAggregation", null);
+__decorate([
+    (0, common_1.Get)('pan/aggregate/:jobId'),
+    __param(0, (0, common_1.Param)('jobId')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ImportController.prototype, "getAggregationStatus", null);
 __decorate([
     (0, common_1.Post)('pan/sync'),
     __param(0, (0, common_1.Req)()),

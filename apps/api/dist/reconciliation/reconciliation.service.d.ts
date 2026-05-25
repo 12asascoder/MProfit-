@@ -93,4 +93,25 @@ export declare class ReconciliationService {
         resolvedAt: Date | null;
         resolvedValue: string | null;
     }>;
+    runReconciliationEngine(userId: string, portfolioId: string): Promise<{
+        message: string;
+        conflictsDetected: number;
+        conflicts: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            notes: string | null;
+            holdingId: string;
+            sourceA: string;
+            sourceB: string;
+            field: string;
+            valueA: string;
+            valueB: string;
+            severity: import(".prisma/client").$Enums.ConflictSeverity;
+            resolution: import(".prisma/client").$Enums.ConflictResolution;
+            resolvedBy: string | null;
+            resolvedAt: Date | null;
+            resolvedValue: string | null;
+        }[];
+    }>;
 }

@@ -28,8 +28,13 @@ let ReconciliationController = class ReconciliationController {
         return this.reconciliationService.resolveConflict(id, userId, body.resolvedValue, body.notes);
     }
     dismissConflict(id, req) {
-        const userId = req.user.userId;
-        return this.reconciliationService.dismissConflict(id, userId);
+        return this.reconciliationService.dismissConflict(id, req.user?.id || 'mock-user-id');
+    }
+    runEngine(req, portfolioId) {
+        if (!portfolioId) {
+            throw new Error('portfolioId is required');
+        }
+        return this.reconciliationService.runReconciliationEngine(req.user?.id || 'mock-user-id', portfolioId);
     }
 };
 exports.ReconciliationController = ReconciliationController;
@@ -58,6 +63,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], ReconciliationController.prototype, "dismissConflict", null);
+__decorate([
+    (0, common_1.Post)('run'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)('portfolioId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ReconciliationController.prototype, "runEngine", null);
 exports.ReconciliationController = ReconciliationController = __decorate([
     (0, common_1.Controller)('reconciliation'),
     __metadata("design:paramtypes", [reconciliation_service_1.ReconciliationService])

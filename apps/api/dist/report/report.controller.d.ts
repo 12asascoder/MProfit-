@@ -22,8 +22,8 @@ export declare class ReportController {
         status: import(".prisma/client").$Enums.ReportStatus;
         fileName: string | null;
         fileUrl: string | null;
-        format: import(".prisma/client").$Enums.ReportFormat;
         fileSize: number | null;
+        format: import(".prisma/client").$Enums.ReportFormat;
         filters: import("@prisma/client/runtime/library").JsonValue;
         generatedAt: Date | null;
     }[]>;
@@ -37,8 +37,8 @@ export declare class ReportController {
         status: import(".prisma/client").$Enums.ReportStatus;
         fileName: string | null;
         fileUrl: string | null;
-        format: import(".prisma/client").$Enums.ReportFormat;
         fileSize: number | null;
+        format: import(".prisma/client").$Enums.ReportFormat;
         filters: import("@prisma/client/runtime/library").JsonValue;
         generatedAt: Date | null;
     }>;

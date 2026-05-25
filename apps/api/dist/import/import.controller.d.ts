@@ -3,11 +3,25 @@ import { ImportSourceType } from '@prisma/client';
 export declare class ImportController {
     private readonly importService;
     constructor(importService: ImportService);
-    importCAS(req: any, file: Express.Multer.File, password?: string): Promise<{
+    importDocument(req: any, file: Express.Multer.File, password?: string): Promise<{
         jobId: string;
         status: import(".prisma/client").$Enums.ImportJobStatus;
         message: string;
     }>;
+    getConnectors(): {
+        id: string;
+        name: string;
+        category: string;
+        status: string;
+        authType: string;
+        popularity: number;
+    }[];
+    startPanAggregation(req: any, body: {
+        pan: string;
+        portfolioId: string;
+        importPeriod: string;
+    }): Promise<import("./import.service").PanAggregationResult>;
+    getAggregationStatus(jobId: string, req: any): Promise<import("./import.service").PanAggregationResult>;
     syncPanLinkedAccounts(req: any, pan: string): Promise<{
         jobId: string;
         status: import(".prisma/client").$Enums.ImportJobStatus;
