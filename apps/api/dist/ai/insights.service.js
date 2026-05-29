@@ -14,18 +14,18 @@ exports.InsightsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
-const openai_1 = require("openai");
+const groq_sdk_1 = require("groq-sdk");
 let InsightsService = InsightsService_1 = class InsightsService {
     constructor(prisma) {
         this.prisma = prisma;
         this.logger = new common_1.Logger(InsightsService_1.name);
-        this.openai = null;
-        const apiKey = process.env.OPENAI_API_KEY;
+        this.groq = null;
+        const apiKey = process.env.GROQ_API_KEY;
         if (apiKey) {
-            this.openai = new openai_1.default({ apiKey });
+            this.groq = new groq_sdk_1.default({ apiKey });
         }
         else {
-            this.logger.warn('OPENAI_API_KEY not found. InsightsService will run in mock mode.');
+            this.logger.warn('GROQ_API_KEY not found. InsightsService will run in mock mode.');
         }
     }
     async generateInsightsForPortfolio(portfolioId) {
@@ -36,35 +36,37 @@ let InsightsService = InsightsService_1 = class InsightsService {
         if (!portfolio)
             throw new Error('Portfolio not found');
         let generatedInsights = [];
-        if (this.openai) {
+        if (this.groq) {
             try {
                 const systemPrompt = `
 You are MProfit AI, a wealth intelligence system. Analyze the following portfolio holdings and generate actionable insights (e.g., concentration risk, tax harvesting).
-Return a JSON array of insights matching this schema:
-[
-  {
-    "type": "CONCENTRATION_RISK" | "TAX_OPTIMIZATION" | "MARKET_OPPORTUNITY",
-    "title": "string",
-    "body": "string",
-    "confidence": number (0 to 1),
-    "whyGenerated": "string",
-    "dataTrigger": "stringified json object",
-    "disclaimer": "string",
-    "actionLabel": "string"
-  }
-]
+Return a JSON object with an "insights" key containing an array of insights matching this schema:
+{
+  "insights": [
+    {
+      "type": "CONCENTRATION_RISK" | "TAX_OPTIMIZATION" | "MARKET_OPPORTUNITY",
+      "title": "string",
+      "body": "string",
+      "confidence": number (0 to 1),
+      "whyGenerated": "string",
+      "dataTrigger": "stringified json object",
+      "disclaimer": "string",
+      "actionLabel": "string"
+    }
+  ]
+}
 
 Portfolio Data:
 ${JSON.stringify(portfolio.holdings.map(h => ({ name: h.asset.name, qty: h.quantity, cost: h.averageCost, category: h.asset.category })), null, 2)}
 `;
-                const completion = await this.openai.chat.completions.create({
-                    model: 'gpt-4o-mini',
+                const completion = await this.groq.chat.completions.create({
+                    model: 'llama3-70b-8192',
                     messages: [{ role: 'system', content: systemPrompt }],
                     response_format: { type: 'json_object' }
                 });
-                const rawContent = completion.choices[0].message.content;
+                const rawContent = completion.choices[0]?.message?.content;
                 const parsed = JSON.parse(rawContent || '{"insights":[]}');
-                generatedInsights = Array.isArray(parsed) ? parsed : (parsed.insights || []);
+                generatedInsights = parsed.insights || [];
             }
             catch (error) {
                 this.logger.error(`Failed to generate LLM insights: ${error.message}`);

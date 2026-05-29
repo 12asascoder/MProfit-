@@ -172,7 +172,7 @@ export default function OnboardingPage() {
 
         <AnimatedCard className="overflow-hidden p-8 shadow-xl">
           {/* Progress Indicators */}
-          <div className="flex items-center justify-between mb-8 relative">
+          <div className="flex items-center justify-between mb-12 pb-6 relative">
             <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-border-light -z-10 -translate-y-1/2" />
             {STEPS.map((step) => {
               const isActive = step.id === currentStep;

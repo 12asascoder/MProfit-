@@ -2,7 +2,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export declare class InsightsService {
     private prisma;
     private readonly logger;
-    private openai;
+    private groq;
     constructor(prisma: PrismaService);
     generateInsightsForPortfolio(portfolioId: string): Promise<any[]>;
     private getMockInsights;

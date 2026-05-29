@@ -47,6 +47,7 @@ export class CopilotService {
 
     // 3. Process RAG + LLM call
     let responseContent = "I'm currently running in offline mock mode. Please configure OPENAI_API_KEY in the backend to access live intelligence.";
+    let metadata: any = {};
     
     if (this.groq) {
       try {
@@ -64,16 +65,32 @@ export class CopilotService {
         });
 
         const messages: any[] = [
-          { role: 'system', content: `You are MProfit AI Copilot, a professional wealth management advisor. The user has a portfolio with the following holdings: \n\n${JSON.stringify(portfolio?.holdings.map(h => ({ name: h.asset.name, quantity: h.quantity, averageCost: h.averageCost })), null, 2)}\n\nProvide concise, professional, and actionable advice. Never suggest executable actions or guarantee returns.` },
+          { role: 'system', content: `You are MProfit AI Copilot, a professional wealth management advisor. The user has a portfolio with the following holdings: \n\n${JSON.stringify(portfolio?.holdings.map(h => ({ name: h.asset.name, quantity: h.quantity, averageCost: h.averageCost })), null, 2)}\n\nProvide concise, professional, and actionable advice. Never suggest executable actions or guarantee returns. You MUST output a JSON object matching this schema exactly:
+{
+  "type": "copilot",
+  "text": "Your conversational response",
+  "why_generated": "Reason narrative",
+  "data_trigger": ["holding_id:..."],
+  "confidence_level": "high",
+  "assumptions_used": ["assumption A"],
+  "estimated_impact": "None",
+  "advisory_disclaimer": "Not financial advice."
+}` },
           ...history.map(m => ({ role: m.role, content: m.content }))
         ];
 
         const completion = await this.groq.chat.completions.create({
           model: 'llama3-70b-8192',
           messages,
+          response_format: { type: 'json_object' }
         });
 
-        responseContent = completion.choices[0]?.message?.content || responseContent;
+        const rawContent = completion.choices[0]?.message?.content;
+        const parsed = JSON.parse(rawContent || '{}');
+        responseContent = parsed.text || "I'm sorry, I couldn't generate a proper response.";
+        
+        // Optionally save the full structured output to the message metadata
+        metadata = parsed;
       } catch (error: any) {
         this.logger.error(`Groq error: ${error.message}`);
         responseContent = "I'm sorry, I encountered an error connecting to the AI brain.";
@@ -93,6 +110,7 @@ export class CopilotService {
         conversationId,
         role: 'assistant',
         content: responseContent,
+        metadata: typeof metadata !== 'undefined' ? metadata : {},
       }
     });
 

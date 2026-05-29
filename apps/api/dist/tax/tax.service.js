@@ -13,12 +13,29 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TaxService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const TAX_RULES = {
+    '2024-25': {
+        equityLTCGThreshold: 100000,
+        equityLTCGRate: 0.10,
+        equitySTCGRate: 0.15,
+        debtLTCGRateWithIndexation: 0.20,
+        grandfatheringDate: new Date('2018-01-31T23:59:59Z'),
+    },
+    '2023-24': {
+        equityLTCGThreshold: 100000,
+        equityLTCGRate: 0.10,
+        equitySTCGRate: 0.15,
+        debtLTCGRateWithIndexation: 0.20,
+        grandfatheringDate: new Date('2018-01-31T23:59:59Z'),
+    }
+};
 let TaxService = TaxService_1 = class TaxService {
     constructor(prisma) {
         this.prisma = prisma;
         this.logger = new common_1.Logger(TaxService_1.name);
     }
     async getCapitalGains(userId, financialYearStart, financialYearEnd, portfolioId) {
+        const rules = TAX_RULES['2024-25'];
         const sellTransactions = await this.prisma.transaction.findMany({
             where: {
                 portfolio: {
@@ -38,6 +55,8 @@ let TaxService = TaxService_1 = class TaxService {
                 date: 'asc',
             },
         });
+        const ciiRecords = await this.prisma.cIITable.findMany();
+        const ciiMap = new Map(ciiRecords.map(c => [c.fiscalYear, c.indexValue]));
         let totalSTCG = 0;
         let totalLTCG = 0;
         const records = [];
@@ -79,11 +98,25 @@ let TaxService = TaxService_1 = class TaxService {
                 const qtyFromLot = Math.min(Number(lot.remainingQuantity), remainingToSell);
                 const ratio = qtyFromLot / Number(tx.quantity);
                 const lotSaleValue = Number(tx.amount) * ratio;
-                const lotCostBasis = Number(lot.costBasis) * qtyFromLot;
-                const lotGain = lotSaleValue - lotCostBasis;
                 const holdingPeriodMs = new Date(tx.date).getTime() - new Date(lot.acquisitionDate).getTime();
+                const isEquity = tx.asset.category === 'EQUITY';
+                const isDebt = tx.asset.category === 'DEBT';
                 const oneYearMs = 365 * 24 * 60 * 60 * 1000;
-                const isLTCG = holdingPeriodMs > oneYearMs;
+                const threeYearsMs = 3 * 365 * 24 * 60 * 60 * 1000;
+                const isLTCG = isEquity ? holdingPeriodMs > oneYearMs : holdingPeriodMs > threeYearsMs;
+                let effectiveUnitCost = Number(lot.costBasis);
+                if (isEquity && new Date(lot.acquisitionDate) < rules.grandfatheringDate) {
+                    const fmv = lot.grandfatheredFMV ? Number(lot.grandfatheredFMV) : effectiveUnitCost;
+                    const lowerOfFmvAndSale = Math.min(fmv, Number(tx.price));
+                    effectiveUnitCost = Math.max(effectiveUnitCost, lowerOfFmvAndSale);
+                }
+                if (isDebt && isLTCG && lot.ciiYearAcquisition) {
+                    const ciiAcquisition = ciiMap.get(lot.ciiYearAcquisition) || 100;
+                    const ciiSale = ciiMap.get('2023-24') || 348;
+                    effectiveUnitCost = effectiveUnitCost * (ciiSale / ciiAcquisition);
+                }
+                const lotCostBasis = effectiveUnitCost * qtyFromLot;
+                const lotGain = lotSaleValue - lotCostBasis;
                 if (isLTCG) {
                     lotLTCG += lotGain;
                     totalLTCG += lotGain;
@@ -113,7 +146,7 @@ let TaxService = TaxService_1 = class TaxService {
             summary: {
                 totalSTCG,
                 totalLTCG,
-                taxableLTCG: Math.max(0, totalLTCG - 100000),
+                taxableLTCG: Math.max(0, totalLTCG - rules.equityLTCGThreshold),
             },
             records,
         };

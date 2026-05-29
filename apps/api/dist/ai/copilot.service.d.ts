@@ -2,7 +2,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export declare class CopilotService {
     private prisma;
     private readonly logger;
-    private openai;
+    private groq;
     constructor(prisma: PrismaService);
     startConversation(userId: string, portfolioId: string): Promise<{
         id: string;

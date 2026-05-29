@@ -106,7 +106,7 @@ export class TaxService {
         
         // Determine STCG vs LTCG based on holding period
         const holdingPeriodMs = new Date(tx.date).getTime() - new Date(lot.acquisitionDate).getTime();
-        const isEquity = tx.asset.category === 'EQUITY' || tx.asset.category === 'MUTUAL_FUND';
+        const isEquity = tx.asset.category === 'EQUITY';
         const isDebt = tx.asset.category === 'DEBT';
         
         const oneYearMs = 365 * 24 * 60 * 60 * 1000;

@@ -13,18 +13,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CopilotService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
-const openai_1 = require("openai");
+const groq_sdk_1 = require("groq-sdk");
 let CopilotService = CopilotService_1 = class CopilotService {
     constructor(prisma) {
         this.prisma = prisma;
         this.logger = new common_1.Logger(CopilotService_1.name);
-        this.openai = null;
-        const apiKey = process.env.OPENAI_API_KEY;
+        this.groq = null;
+        const apiKey = process.env.GROQ_API_KEY;
         if (apiKey) {
-            this.openai = new openai_1.default({ apiKey });
+            this.groq = new groq_sdk_1.default({ apiKey });
         }
         else {
-            this.logger.warn('OPENAI_API_KEY not found. Copilot will run in mock mode.');
+            this.logger.warn('GROQ_API_KEY not found. Copilot will run in mock mode.');
         }
     }
     async startConversation(userId, portfolioId) {
@@ -51,7 +51,8 @@ let CopilotService = CopilotService_1 = class CopilotService {
             }
         });
         let responseContent = "I'm currently running in offline mock mode. Please configure OPENAI_API_KEY in the backend to access live intelligence.";
-        if (this.openai) {
+        let metadata = {};
+        if (this.groq) {
             try {
                 const portfolio = await this.prisma.portfolio.findUnique({
                     where: { id: conversation.portfolioId },
@@ -63,17 +64,31 @@ let CopilotService = CopilotService_1 = class CopilotService {
                     take: 10
                 });
                 const messages = [
-                    { role: 'system', content: `You are MProfit AI Copilot, a professional wealth management advisor. The user has a portfolio with the following holdings: \n\n${JSON.stringify(portfolio?.holdings.map(h => ({ name: h.asset.name, quantity: h.quantity, averageCost: h.averageCost })), null, 2)}\n\nProvide concise, professional, and actionable advice.` },
+                    { role: 'system', content: `You are MProfit AI Copilot, a professional wealth management advisor. The user has a portfolio with the following holdings: \n\n${JSON.stringify(portfolio?.holdings.map(h => ({ name: h.asset.name, quantity: h.quantity, averageCost: h.averageCost })), null, 2)}\n\nProvide concise, professional, and actionable advice. Never suggest executable actions or guarantee returns. You MUST output a JSON object matching this schema exactly:
+{
+  "type": "copilot",
+  "text": "Your conversational response",
+  "why_generated": "Reason narrative",
+  "data_trigger": ["holding_id:..."],
+  "confidence_level": "high",
+  "assumptions_used": ["assumption A"],
+  "estimated_impact": "None",
+  "advisory_disclaimer": "Not financial advice."
+}` },
                     ...history.map(m => ({ role: m.role, content: m.content }))
                 ];
-                const completion = await this.openai.chat.completions.create({
-                    model: 'gpt-4o-mini',
+                const completion = await this.groq.chat.completions.create({
+                    model: 'llama3-70b-8192',
                     messages,
+                    response_format: { type: 'json_object' }
                 });
-                responseContent = completion.choices[0].message.content || responseContent;
+                const rawContent = completion.choices[0]?.message?.content;
+                const parsed = JSON.parse(rawContent || '{}');
+                responseContent = parsed.text || "I'm sorry, I couldn't generate a proper response.";
+                metadata = parsed;
             }
             catch (error) {
-                this.logger.error(`OpenAI error: ${error.message}`);
+                this.logger.error(`Groq error: ${error.message}`);
                 responseContent = "I'm sorry, I encountered an error connecting to the AI brain.";
             }
         }
@@ -90,6 +105,7 @@ let CopilotService = CopilotService_1 = class CopilotService {
                 conversationId,
                 role: 'assistant',
                 content: responseContent,
+                metadata: typeof metadata !== 'undefined' ? metadata : {},
             }
         });
         const messageCount = await this.prisma.aIMessage.count({
