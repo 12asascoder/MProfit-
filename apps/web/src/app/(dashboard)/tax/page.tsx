@@ -4,11 +4,9 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatCompactINR, formatPercent } from '@mprofit/shared';
 import { TaxType } from '@mprofit/shared';
-import {
-  mockTaxSummary,
-  mockTaxLots,
-  mockTaxOptimizationInsight,
-} from '@/lib/mock-data';
+import { useAuth } from '@/hooks/useAuth';
+import { ApiClient } from '@/lib/api-client';
+import { mockTaxOptimizationInsight } from '@/lib/mock-data'; // Keep insight mock for now since it requires AI triggering
 import {
   Sparkles,
   Search,
@@ -25,8 +23,65 @@ import {
 } from 'lucide-react';
 
 export default function TaxPage() {
-  const tax = mockTaxSummary;
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [tax, setTax] = React.useState<any>(null);
+  const [taxLots, setTaxLots] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  
   const insight = mockTaxOptimizationInsight;
+
+  const fetchTaxData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      // Determine the financial year (e.g. 2024-04-01 to 2025-03-31)
+      const startDate = '2024-04-01T00:00:00.000Z';
+      const endDate = '2025-03-31T23:59:59.999Z';
+      
+      const portfolios = await ApiClient.getPortfolios() as any[];
+      if (portfolios && portfolios.length > 0) {
+        const primaryPortfolioId = portfolios[0].id;
+        
+        // Fetch Summary
+        const summaryResponse = await ApiClient.getCapitalGains(startDate, endDate, primaryPortfolioId);
+        setTax(summaryResponse);
+
+        // Fetch Lots (we mock fetching lots for a specific holding, or we can use the records returned by summary)
+        // Since getCapitalGains returns `records`, we can use that for the table if we want.
+        // For demonstration, we'll map the `records` to the table format.
+        if ((summaryResponse as any).records) {
+           setTaxLots((summaryResponse as any).records);
+        }
+      } else {
+        setError('No portfolios found.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to load tax data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      fetchTaxData();
+    }
+  }, [authLoading, isAuthenticated]);
+
+  if (isLoading) {
+    return <div className="p-6 flex items-center justify-center h-full"><RefreshCw className="w-6 h-6 animate-spin text-brand-primary" /></div>;
+  }
+
+  if (error) {
+    return <div className="p-6 flex flex-col items-center justify-center h-full text-loss"><AlertTriangle className="w-8 h-8 mb-2" /><p>{error}</p><button onClick={fetchTaxData} className="mt-4 px-4 py-2 border rounded hover:bg-surface-hover text-text-primary">Retry</button></div>;
+  }
+
+  if (!tax) return null;
+
+  // Use the records for the table, mapping them appropriately
+  const displayRecords = taxLots.length > 0 ? taxLots : [];
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -58,7 +113,7 @@ export default function TaxPage() {
             Short Term Gain (STCG)
           </span>
           <p className="text-2xl font-bold text-text-primary mt-2">
-            {formatCompactINR(tax.stcg)}
+            {formatCompactINR(tax.summary?.totalSTCG || 0)}
           </p>
           <p className="text-xs text-gain mt-1.5 flex items-center gap-1">
             ↑ +12.4% vs LY
@@ -71,7 +126,7 @@ export default function TaxPage() {
             Long Term Gain (LTCG)
           </span>
           <p className="text-2xl font-bold text-text-primary mt-2">
-            {formatCompactINR(tax.ltcg)}
+            {formatCompactINR(tax.summary?.totalLTCG || 0)}
           </p>
           <p className="text-xs text-text-secondary mt-1.5 flex items-center gap-1">
             ₹1L Exemption Applied
@@ -84,7 +139,7 @@ export default function TaxPage() {
             Estimated Liability
           </span>
           <p className="text-2xl font-bold text-text-primary mt-2">
-            {formatCompactINR(tax.estimatedLiability)}
+            {formatCompactINR(tax.summary?.taxableLTCG || 0)}
           </p>
           <p className="text-xs text-loss mt-1.5 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
@@ -98,10 +153,10 @@ export default function TaxPage() {
             Harvesting Savings Potential
           </span>
           <p className="text-2xl font-bold text-gain mt-2">
-            {formatCompactINR(tax.harvestingSavingsPotential)}
+            {formatCompactINR(150000)} {/* Static fallback for harvesting potential */}
           </p>
           <p className="text-xs text-text-secondary mt-1.5">
-            Across {tax.harvestingPositions} Positions
+            Across active positions
           </p>
         </div>
       </div>
@@ -163,53 +218,53 @@ export default function TaxPage() {
               </tr>
             </thead>
             <tbody>
-              {mockTaxLots.map((lot) => (
-                <tr key={lot.id}>
+              {displayRecords.map((record: any, idx: number) => (
+                <tr key={record.transactionId || idx}>
                   <td className="pl-6">
                     <span className="text-sm font-semibold text-text-primary">
-                      {lot.holding.asset.name}
+                      {record.assetName || 'Unknown Asset'}
                     </span>
                   </td>
                   <td>
                     <span className="text-sm text-text-secondary">
-                      {new Date(lot.acquisitionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {new Date(record.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                   </td>
                   <td className="text-right">
                     <span className="text-sm text-text-primary">
-                      {lot.quantity.toLocaleString('en-IN')}
+                      {Number(record.quantitySold || 0).toLocaleString('en-IN')}
                     </span>
                   </td>
                   <td className="text-right">
                     <span className="text-sm text-text-primary">
-                      {formatCurrency(lot.costBasis)}
+                      {formatCurrency(record.costBasis || 0)}
                     </span>
                   </td>
                   <td className="text-center">
                     <span
                       className={cn(
                         'badge text-[11px] font-semibold',
-                        lot.isGrandfathered ? 'badge-green' : 'badge-red'
+                        record.method === 'FIFO_LOT_MATCHING' ? 'badge-green' : 'badge-amber'
                       )}
                     >
-                      {lot.isGrandfathered ? 'YES' : 'NO'}
+                      {record.method === 'FIFO_LOT_MATCHING' ? 'MATCHED' : 'ESTIMATED'}
                     </span>
                   </td>
                   <td className="text-right">
                     <span
                       className={cn(
                         'text-sm font-semibold',
-                        lot.unrealizedGain >= 0 ? 'text-gain' : 'text-loss'
+                        (record.gain || 0) >= 0 ? 'text-gain' : 'text-loss'
                       )}
                     >
-                      {lot.unrealizedGain >= 0 ? '+ ' : '- '}
-                      {formatCurrency(Math.abs(lot.unrealizedGain))}
+                      {(record.gain || 0) >= 0 ? '+ ' : '- '}
+                      {formatCurrency(Math.abs(record.gain || 0))}
                     </span>
                   </td>
                   <td className="text-center pr-6">
-                    <button className="p-1 rounded hover:bg-surface-hover transition-colors">
-                      <MoreVertical className="w-4 h-4 text-text-tertiary" />
-                    </button>
+                    <span className={cn('text-xs font-bold uppercase', record.type === 'LTCG' ? 'text-brand-purple' : 'text-brand-blue')}>
+                      {record.type}
+                    </span>
                   </td>
                 </tr>
               ))}

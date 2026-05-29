@@ -1,18 +1,18 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import OpenAI from 'openai';
+import Groq from 'groq-sdk';
 
 @Injectable()
 export class CopilotService {
   private readonly logger = new Logger(CopilotService.name);
-  private openai: OpenAI | null = null;
+  private groq: Groq | null = null;
 
   constructor(private prisma: PrismaService) {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (apiKey) {
-      this.openai = new OpenAI({ apiKey });
+      this.groq = new Groq({ apiKey });
     } else {
-      this.logger.warn('OPENAI_API_KEY not found. Copilot will run in mock mode.');
+      this.logger.warn('GROQ_API_KEY not found. Copilot will run in mock mode.');
     }
   }
 
@@ -48,7 +48,7 @@ export class CopilotService {
     // 3. Process RAG + LLM call
     let responseContent = "I'm currently running in offline mock mode. Please configure OPENAI_API_KEY in the backend to access live intelligence.";
     
-    if (this.openai) {
+    if (this.groq) {
       try {
         // Fetch context
         const portfolio = await this.prisma.portfolio.findUnique({
@@ -64,18 +64,18 @@ export class CopilotService {
         });
 
         const messages: any[] = [
-          { role: 'system', content: `You are MProfit AI Copilot, a professional wealth management advisor. The user has a portfolio with the following holdings: \n\n${JSON.stringify(portfolio?.holdings.map(h => ({ name: h.asset.name, quantity: h.quantity, averageCost: h.averageCost })), null, 2)}\n\nProvide concise, professional, and actionable advice.` },
+          { role: 'system', content: `You are MProfit AI Copilot, a professional wealth management advisor. The user has a portfolio with the following holdings: \n\n${JSON.stringify(portfolio?.holdings.map(h => ({ name: h.asset.name, quantity: h.quantity, averageCost: h.averageCost })), null, 2)}\n\nProvide concise, professional, and actionable advice. Never suggest executable actions or guarantee returns.` },
           ...history.map(m => ({ role: m.role, content: m.content }))
         ];
 
-        const completion = await this.openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+        const completion = await this.groq.chat.completions.create({
+          model: 'llama3-70b-8192',
           messages,
         });
 
-        responseContent = completion.choices[0].message.content || responseContent;
+        responseContent = completion.choices[0]?.message?.content || responseContent;
       } catch (error: any) {
-        this.logger.error(`OpenAI error: ${error.message}`);
+        this.logger.error(`Groq error: ${error.message}`);
         responseContent = "I'm sorry, I encountered an error connecting to the AI brain.";
       }
     } else {

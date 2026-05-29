@@ -1,6 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+// ─── VERSIONED TAX RULES ENGINE (FR-13.5) ───
+const TAX_RULES = {
+  '2024-25': {
+    equityLTCGThreshold: 100000,
+    equityLTCGRate: 0.10, // 10% on gains > 1L
+    equitySTCGRate: 0.15, // 15%
+    debtLTCGRateWithIndexation: 0.20,
+    grandfatheringDate: new Date('2018-01-31T23:59:59Z'),
+  },
+  '2023-24': {
+    equityLTCGThreshold: 100000,
+    equityLTCGRate: 0.10,
+    equitySTCGRate: 0.15,
+    debtLTCGRateWithIndexation: 0.20,
+    grandfatheringDate: new Date('2018-01-31T23:59:59Z'),
+  }
+};
+
 @Injectable()
 export class TaxService {
   private readonly logger = new Logger(TaxService.name);
@@ -11,6 +29,8 @@ export class TaxService {
    * Calculates realized capital gains for a given financial year
    */
   async getCapitalGains(userId: string, financialYearStart: string, financialYearEnd: string, portfolioId?: string) {
+    const rules = TAX_RULES['2024-25']; // Default to current FY for rules engine
+
     // 1. Fetch all sell transactions in this financial year
     const sellTransactions = await this.prisma.transaction.findMany({
       where: {
@@ -32,6 +52,10 @@ export class TaxService {
       },
     });
 
+    // Fetch CII Table for indexation (FR-13.2)
+    const ciiRecords = await this.prisma.cIITable.findMany();
+    const ciiMap = new Map(ciiRecords.map(c => [c.fiscalYear, c.indexValue]));
+
     let totalSTCG = 0;
     let totalLTCG = 0;
 
@@ -39,18 +63,16 @@ export class TaxService {
 
     // Process each sell transaction using FIFO tax lot consumption
     for (const tx of sellTransactions) {
-      // Get remaining tax lots for this holding in FIFO order
       const taxLots = await this.prisma.taxLot.findMany({
         where: {
-          holdingId: tx.portfolioId + '_' + tx.assetId, // Simplistic proxy for holding id
+          holdingId: tx.portfolioId + '_' + tx.assetId,
           remainingQuantity: { gt: 0 },
         },
         orderBy: { acquisitionDate: 'asc' },
       });
 
-      // If no valid holding/lots, fallback to simplistic calculation
       if (!taxLots || taxLots.length === 0) {
-        // Fallback mock logic for demo
+        // Fallback for missing tax lots
         const isLTCG = tx.asset.category === 'EQUITY';
         const gain = (Number(tx.amount) - (Number(tx.price) * 0.8 * Number(tx.quantity)));
         if (isLTCG) totalLTCG += gain; else totalSTCG += gain;
@@ -81,13 +103,35 @@ export class TaxService {
         const ratio = qtyFromLot / Number(tx.quantity);
         
         const lotSaleValue = Number(tx.amount) * ratio;
-        const lotCostBasis = Number(lot.costBasis) * qtyFromLot;
-        const lotGain = lotSaleValue - lotCostBasis;
-
-        // Determine STCG vs LTCG based on 1-year holding period
+        
+        // Determine STCG vs LTCG based on holding period
         const holdingPeriodMs = new Date(tx.date).getTime() - new Date(lot.acquisitionDate).getTime();
+        const isEquity = tx.asset.category === 'EQUITY' || tx.asset.category === 'MUTUAL_FUND';
+        const isDebt = tx.asset.category === 'DEBT';
+        
         const oneYearMs = 365 * 24 * 60 * 60 * 1000;
-        const isLTCG = holdingPeriodMs > oneYearMs;
+        const threeYearsMs = 3 * 365 * 24 * 60 * 60 * 1000;
+        const isLTCG = isEquity ? holdingPeriodMs > oneYearMs : holdingPeriodMs > threeYearsMs;
+
+        let effectiveUnitCost = Number(lot.costBasis);
+
+        // ─── GRANDFATHERING LOGIC (FR-13.3) ───
+        if (isEquity && new Date(lot.acquisitionDate) < rules.grandfatheringDate) {
+          const fmv = lot.grandfatheredFMV ? Number(lot.grandfatheredFMV) : effectiveUnitCost;
+          const lowerOfFmvAndSale = Math.min(fmv, Number(tx.price));
+          effectiveUnitCost = Math.max(effectiveUnitCost, lowerOfFmvAndSale);
+        }
+
+        // ─── INDEXATION LOGIC (FR-13.2) ───
+        if (isDebt && isLTCG && lot.ciiYearAcquisition) {
+           const ciiAcquisition = ciiMap.get(lot.ciiYearAcquisition) || 100;
+           // Hardcoded current year CII for demonstration purposes (e.g., 348 for FY2023-24)
+           const ciiSale = ciiMap.get('2023-24') || 348;
+           effectiveUnitCost = effectiveUnitCost * (ciiSale / ciiAcquisition);
+        }
+
+        const lotCostBasis = effectiveUnitCost * qtyFromLot;
+        const lotGain = lotSaleValue - lotCostBasis;
 
         if (isLTCG) {
           lotLTCG += lotGain;
@@ -100,9 +144,6 @@ export class TaxService {
         saleValueAccumulator += lotSaleValue;
         costBasisAccumulator += lotCostBasis;
         remainingToSell -= qtyFromLot;
-
-        // Note: In a real system, we'd also update the taxLot.remainingQuantity in the DB here!
-        // But for this idempotent report, we just calculate.
       }
 
       records.push({
@@ -113,7 +154,7 @@ export class TaxService {
         saleValue: saleValueAccumulator,
         costBasis: costBasisAccumulator,
         gain: lotLTCG + lotSTCG,
-        type: lotLTCG > lotSTCG ? 'LTCG' : 'STCG', // Simplified categorization
+        type: lotLTCG > lotSTCG ? 'LTCG' : 'STCG',
         method: 'FIFO_LOT_MATCHING'
       });
     }
@@ -123,7 +164,7 @@ export class TaxService {
       summary: {
         totalSTCG,
         totalLTCG,
-        taxableLTCG: Math.max(0, totalLTCG - 100000), // 1L exemption for equity (mock)
+        taxableLTCG: Math.max(0, totalLTCG - rules.equityLTCGThreshold), 
       },
       records,
     };

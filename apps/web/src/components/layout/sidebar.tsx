@@ -30,7 +30,8 @@ const navItems = [
   { id: 'tax', label: 'Tax', icon: Receipt, href: '/tax' },
   { id: 'reports', label: 'Reports', icon: FileText, href: '/reports' },
   { id: 'ai-copilot', label: 'AI Copilot', icon: Sparkles, href: '/ai-copilot' },
-  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+  { id: 'tools', label: 'Tools', icon: Settings, href: '/tools' },
+  { id: 'preferences', label: 'Preferences', icon: Settings, href: '/preferences' },
 ];
 
 interface SidebarProps {

@@ -59,6 +59,16 @@ export class ApiClient {
   static async sendCopilotMessage(conversationId: string, content: string) { return this.request(`/ai/copilot/${conversationId}/message`, { method: 'POST', body: JSON.stringify({ content }) }); }
   static async getCopilotHistory(conversationId: string) { return this.request(`/ai/copilot/${conversationId}`); }
 
+  // Tax (FR-13)
+  static async getCapitalGains(startDate: string, endDate: string, portfolioId?: string) {
+    const params = new URLSearchParams({ startDate, endDate });
+    if (portfolioId) params.append('portfolioId', portfolioId);
+    return this.request(`/tax/capital-gains?${params.toString()}`);
+  }
+  static async getTaxLots(holdingId: string) {
+    return this.request(`/tax/lots/${holdingId}`);
+  }
+
   // Import & PAN Aggregation (FR-4)
   static async startPanAggregation(data: { pan: string; portfolioId: string; importPeriod: string }) {
     return this.request('/import/pan/aggregate', { method: 'POST', body: JSON.stringify(data) });
